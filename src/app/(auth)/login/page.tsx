@@ -1,10 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { login, loginWithGoogle, loginWithFacebook } from '@/lib/api/auth';
 import { GoogleLogin } from '@react-oauth/google';
+
+// Deklarasi tipe untuk window.google
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          cancel: () => void;
+          initialize: (params: any) => void;
+          prompt: () => void;
+          renderButton: (element: HTMLElement, options: any) => void;
+        };
+      };
+    };
+  }
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +28,29 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isGoogleReady, setIsGoogleReady] = useState(false);
+
+  useEffect(() => {
+    // Bersihkan state Google sebelumnya
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.cancel();
+    }
+    
+    // Hapus data dari sessionStorage
+    sessionStorage.removeItem('google_auto_select');
+    
+    // Tunggu sebentar sebelum menginisialisasi Google Sign-In
+    const timer = setTimeout(() => {
+      setIsGoogleReady(true);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+      if (window.google?.accounts?.id) {
+        window.google.accounts.id.cancel();
+      }
+    };
+  }, []);
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     setIsLoading(true);
@@ -27,22 +66,22 @@ export default function LoginPage() {
 
       console.log('Backend response:', response);
 
-      if (!response || !response.id) {
+      if (!response || !response.user_id) {
         throw new Error('Data response tidak valid');
       }
 
       // Simpan data user di localStorage dengan format yang sama dengan login biasa
       const authData = {
-        token: response.id,
+        token: credentialResponse.credential,
         user: {
           id: response.user_id,
-          name: 'User', // Akan diupdate nanti
-          email: 'user@example.com' // Akan diupdate nanti
+          name: response.name,
+          email: response.email
         }
       };
       
       localStorage.setItem('auth', JSON.stringify(authData));
-      router.push('/chat');
+      router.push('/explore');
     } catch (error) {
       console.error('Google login error:', error);
       setError(error instanceof Error ? error.message : 'Terjadi kesalahan saat login dengan Google');
@@ -58,8 +97,19 @@ export default function LoginPage() {
 
     try {
       const response = await login({ email, password });
-      localStorage.setItem('auth', JSON.stringify(response));
-      router.push('/chat');
+      
+      // Pastikan format data konsisten
+      const authData = {
+        token: response.token,
+        user: {
+          id: response.user.id,
+          name: response.user.name,
+          email: response.user.email
+        }
+      };
+      
+      localStorage.setItem('auth', JSON.stringify(authData));
+      router.push('/explore');
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Terjadi kesalahan saat login');
     } finally {
@@ -161,14 +211,23 @@ export default function LoginPage() {
 
             <div className="mt-6 grid grid-cols-2 gap-3">
               <div className="flex justify-center">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={() => {
-                    console.error('Login Failed');
-                    setError('Login dengan Google gagal');
-                  }}
-                  useOneTap
-                />
+                {isGoogleReady && (
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => {
+                      console.error('Login Failed');
+                      setError('Login dengan Google gagal');
+                    }}
+                    useOneTap={false}
+                    type="standard"
+                    theme="filled_blue"
+                    size="large"
+                    width="250"
+                    context="signin"
+                    auto_select={false}
+                    itp_support={false}
+                  />
+                )}
               </div>
 
               <button

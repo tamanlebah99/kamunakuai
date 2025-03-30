@@ -1,14 +1,14 @@
 import { API_BASE_URL } from '@/config/api';
 import { getAuthToken } from '@/lib/utils/auth';
 
-interface Message {
+export interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant';
   timestamp: string;
 }
 
-interface ChatHistory {
+export interface ChatHistory {
   id: string;
   user_id: string;
   chat_name: string | null;
@@ -17,22 +17,28 @@ interface ChatHistory {
   last_updated: string;
 }
 
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   content: string;
   role: 'user' | 'assistant';
   timestamp: string;
 }
 
-interface SendMessageResponse {
-  message: ChatMessage;
+export interface SendMessageResponse {
+  message: Message;
+  chat_id: string;
 }
 
-interface GetChatHistoryResponse {
-  chats: ChatHistory[];
+export interface GetChatHistoryResponse {
+  id: string;
+  user_id: string;
+  chat_name: string | null;
+  mode: string | null;
+  created_at: string;
+  last_updated: string;
 }
 
-interface GetChatMessagesResponse {
+export interface GetChatMessagesResponse {
   messages: Message[];
 }
 
@@ -62,11 +68,23 @@ export async function sendMessage(chatId: string | null, content: string): Promi
   return await response.json();
 }
 
-export async function getChatHistory(): Promise<GetChatHistoryResponse> {
-  const response = await fetch(`${API_BASE_URL}/chat/history`, {
+export async function getChatHistory(): Promise<GetChatHistoryResponse[]> {
+  const authData = getAuthData();
+  const userId = authData.user?.id;
+
+  if (!userId) {
+    throw new Error('User ID not found');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/chat-history`, {
+    method: 'POST',
     headers: {
+      'Content-Type': 'application/json',
       'Authorization': `Bearer ${getAuthToken()}`,
     },
+    body: JSON.stringify({
+      userId: userId
+    }),
   });
 
   if (!response.ok) {
@@ -79,7 +97,7 @@ export async function getChatHistory(): Promise<GetChatHistoryResponse> {
 export async function getChatMessages(chatId: string): Promise<GetChatMessagesResponse> {
   const response = await fetch(`${API_BASE_URL}/chat/${chatId}/messages`, {
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Authorization': `Bearer ${getAuthToken()}`,
     },
   });
 
@@ -113,7 +131,7 @@ export async function deleteChat(chatId: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/chat/${chatId}`, {
     method: 'DELETE',
     headers: {
-      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Authorization': `Bearer ${getAuthToken()}`,
     },
   });
 
