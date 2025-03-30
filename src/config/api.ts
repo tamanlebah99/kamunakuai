@@ -1,0 +1,1 @@
+export const API_BASE_URL = 'https://coachbot-n8n-01.fly.dev/webhook'; 

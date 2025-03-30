@@ -1,0 +1,237 @@
+# **Desain Aplikasi Chatbot**
+
+## **1. Jawaban 5 Pertanyaan Cursor**
+1. **Teknologi yang ingin digunakan:**
+   - **Frontend**: React/Next.js.
+   - **Backend**: n8n sebagai middleware untuk menghubungkan frontend dengan layanan AI eksternal.
+   - **Database**: PostgreSQL (detail schema tidak perlu disertakan).
+
+2. **Fitur spesifik yang diinginkan:**
+   - Dark/Light mode.
+   - Sidebar untuk menyimpan riwayat chat (dapat direname).
+   - Export/share chat.
+   - Animasi loading, markdown rendering, code highlighting.
+   - Responsive design.
+
+3. **Integrasi AI:**
+   - Tidak ada model AI langsung di aplikasi; semua integrasi dilakukan melalui backend n8n.
+   - Endpoint API dari layanan AI eksternal (misalnya OpenAI, Hugging Face).
+
+4. **Penyimpanan data:**
+   - Riwayat chat disimpan di PostgreSQL.
+   - Detail penyimpanan hanya terlihat dari response payload API.
+
+5. **Autentikasi:**
+   - Login/register menggunakan OAuth (Google, Facebook) atau email/password.
+   - Autentikasi Google menggunakan ID Token dari Google OAuth.
+
+---
+
+## **2. Struktur Aplikasi**
+Aplikasi ini dibagi menjadi beberapa komponen utama:
+
+### **a. Frontend**
+- **Framework**: Next.js.
+- **Komponen Utama**:
+  - **Sidebar**: Navigasi utama, daftar agen, riwayat chat.
+  - **Explore Agents**: Halaman utama untuk mengeksplorasi agen.
+  - **Chat Screen**: Halaman chat dengan input pesan dan percakapan.
+  - **Popup Modal**: Detail agen ketika diklik.
+
+### **b. Backend**
+- **Middleware**: n8n.
+  - Mengelola workflow API untuk integrasi dengan layanan AI.
+  - Menyimpan dan mengambil data dari PostgreSQL.
+- **Database**: PostgreSQL (detail tidak perlu disertakan).
+
+---
+
+## **3. Endpoint API**
+Berikut adalah daftar endpoint API yang digunakan dalam aplikasi:
+
+### **a. Autentikasi**
+#### **Login dengan Email/Password**
+- **Endpoint**: `POST /api/auth/login`
+- **Body Payload**:
+  ```json
+  {
+      "email": "user@example.com",
+      "password": "password123"
+  }
+  ```
+- **Response Payload**:
+  ```json
+  {
+      "token": "jwt-token-aplikasi",
+      "user": {
+          "id": 1,
+          "username": "Taman Lebah",
+          "email": "user@example.com"
+      }
+  }
+  ```
+
+#### **Register**
+- **Endpoint**: `POST /api/auth/register`
+- **Body Payload**:
+  ```json
+  {
+      "username": "Taman Lebah",
+      "email": "user@example.com",
+      "password": "password123"
+  }
+  ```
+- **Response Payload**:
+  ```json
+  {
+      "message": "Pengguna berhasil terdaftar"
+  }
+  ```
+
+#### **Login dengan Google**
+- **Endpoint**: `POST /api/auth/google`
+- **Body Payload**:
+  ```json
+  {
+      "id_token": "google-id-token"
+  }
+  ```
+- **Response Payload**:
+  ```json
+  {
+      "token": "jwt-token-aplikasi",
+      "user": {
+          "id": 1,
+          "username": "Taman Lebah",
+          "email": "user@example.com"
+      }
+  }
+  ```
+
+**Catatan:**  
+- Untuk autentikasi Google, frontend harus mengirimkan **ID Token** yang dikeluarkan oleh Google OAuth.
+- Backend akan memverifikasi ID Token menggunakan Google API dan mengeluarkan JWT aplikasi setelah verifikasi berhasil.
+
+---
+
+### **b. Explore Agents**
+#### **Get Tab List**
+- **Endpoint**: `GET /api/explore/tabs`
+- **Authorization**: Bearer Token (Opsional).
+- **Response Payload**:
+  ```json
+  [
+      "Top Picks",
+      "Pengembangan Diri",
+      "Informasi",
+      "Konten",
+      "Pendidikan",
+      "Gaya Hidup",
+      "Anak Soleh"
+  ]
+  ```
+
+#### **Get Featured Agents**
+- **Endpoint**: `GET /api/explore/featured-agents?tab=top-picks`
+- **Authorization**: Bearer Token (Opsional).
+- **Response Payload**:
+  ```json
+  [
+      {
+          "id": 1,
+          "name": "Expedia",
+          "description": "Bantu rencanakan perjalanan Anda – temukan tempat tinggal, destinasi, dan aktivitas.",
+          "provider": "expedia.com",
+          "icon": "https://example.com/expedia-icon.png"
+      },
+      {
+          "id": 2,
+          "name": "Video AI",
+          "description": "4.1 ★ - Pembuat video AI – buat video menarik dengan suara dalam berbagai bahasa!",
+          "provider": "invideo.io",
+          "icon": "https://example.com/videoai-icon.png"
+      }
+  ]
+  ```
+
+---
+
+### **c. Chat**
+#### **Start Chat**
+- **Endpoint**: `POST /api/chat/start`
+- **Authorization**: Bearer Token (Wajib).
+- **Body Payload**:
+  ```json
+  {
+      "user_id": 1,
+      "agent_id": 1,
+      "message": "Bagaimana AI dapat membantu pertanian?"
+  }
+  ```
+- **Response Payload**:
+  ```json
+  {
+      "chat_id": 123,
+      "response": "AI dapat membantu pertanian dengan teknologi seperti drone, sensor tanah, dan prediksi cuaca."
+  }
+  ```
+
+#### **Rename Chat Title**
+- **Endpoint**: `PUT /api/chat/rename`
+- **Authorization**: Bearer Token (Wajib).
+- **Body Payload**:
+  ```json
+  {
+      "chat_id": 123,
+      "new_title": "Transformasi Pertanian dengan AI"
+  }
+  ```
+- **Response Payload**:
+  ```json
+  {
+      "message": "Judul chat berhasil diperbarui"
+  }
+  ```
+
+#### **Get Chat History**
+- **Endpoint**: `GET /api/chat/history?user_id=1`
+- **Authorization**: Bearer Token (Wajib).
+- **Response Payload**:
+  ```json
+  [
+      {
+          "chat_id": 123,
+          "title": "Transformasi Pertanian dengan AI",
+          "messages": [
+              {
+                  "timestamp": "2023-03-30T10:00:00Z",
+                  "message": "Bagaimana AI dapat membantu pertanian?",
+                  "response": "AI dapat membantu pertanian dengan teknologi seperti drone, sensor tanah, dan prediksi cuaca."
+              }
+          ]
+      }
+  ]
+  ```
+
+---
+
+## **4. Security**
+### **a. Autentikasi**
+- Gunakan **JWT (JSON Web Token)** untuk autentikasi pengguna.
+- Untuk login dengan Google, frontend harus mengirimkan **ID Token** ke endpoint `/api/auth/google`.
+- Backend akan memverifikasi ID Token menggunakan Google API dan mengeluarkan JWT aplikasi jika valid.
+
+### **b. Otorisasi**
+- Pastikan hanya pengguna yang memiliki token valid yang dapat mengakses endpoint tertentu (misalnya `/api/chat/history`).
+- Gunakan middleware untuk memvalidasi token JWT sebelum memproses request.
+
+### **c. Enkripsi Data**
+- Password pengguna dienkripsi menggunakan **bcrypt** sebelum disimpan di database.
+- Semua komunikasi antara frontend dan backend menggunakan **HTTPS** untuk melindungi data sensitif.
+
+### **d. Rate Limiting**
+- Terapkan rate limiting pada endpoint API untuk mencegah abuse atau serangan brute-force.
+
+---
+
+Dengan desain ini, aplikasi kamu akan lebih terorganisir, aman, dan mudah di-maintain. Jika ada yg perlu dikonfirmasi atau revisi, silakan beri tahu saya! 😊
