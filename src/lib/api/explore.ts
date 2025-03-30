@@ -102,25 +102,34 @@ export async function getFeaturedAgents(tab: string): Promise<Agent[]> {
 }
 
 export async function getRecentAgents(): Promise<Agent[]> {
-  // Mock data untuk testing
-  return [
-    {
-      id: 1,
-      name: "Expedia",
-      description: "Bantu rencanakan perjalanan Anda – temukan tempat tinggal, destinasi, dan aktivitas.",
-      provider: "expedia.com",
-      provider_url: "https://expedia.com",
-      icon: "https://example.com/expedia-icon.png"
-    },
-    {
-      id: 2,
-      name: "Video AI",
-      description: "4.1 ★ - Pembuat video AI – buat video menarik dengan suara dalam berbagai bahasa!",
-      provider: "invideo.io",
-      provider_url: "https://invideo.io",
-      icon: "https://example.com/videoai-icon.png"
+  try {
+    const authData = getAuthData();
+    const userId = authData.user?.id;
+
+    if (!userId) {
+      throw new Error('User ID not found');
     }
-  ];
+
+    const response = await fetch(`${API_BASE_URL}/explore/recent-agents?userId=${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch recent agents');
+    }
+
+    const data = await response.json();
+    return data.map((agent: any) => ({
+      ...agent,
+      provider_url: `https://${agent.provider}`,
+      rating: agent.description.match(/(\d+\.?\d*)\s*★/) ? parseFloat(agent.description.match(/(\d+\.?\d*)\s*★/)[1]) : undefined
+    }));
+  } catch (error) {
+    console.error('Error fetching recent agents:', error);
+    return [];
+  }
 }
 
 export async function getChatHistory(): Promise<ChatHistory> {

@@ -3,11 +3,13 @@
 import { Fragment } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { UserCircleIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { Heart } from 'lucide-react';
 
 export default function Header() {
   return (
     <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
       <div className="flex items-center gap-2">
+        <Heart className="w-6 h-6 text-[hsl(262,80%,45%)]" />
         <h1 className="text-xl font-semibold">Kamunaku AI</h1>
       </div>
 

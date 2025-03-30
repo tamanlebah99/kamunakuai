@@ -6,6 +6,7 @@ import { Tab, Agent, getTabs, getFeaturedAgents } from '@/lib/api/explore';
 import { Search, Menu } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { AgentDetailModal } from '@/components/agent/AgentDetailModal';
+import { AgentCard } from '@/components/agent/AgentCard';
 
 export default function ExplorePage() {
   const router = useRouter();
@@ -87,11 +88,12 @@ export default function ExplorePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-white dark:bg-gray-900">
+    <div className="min-h-screen bg-white dark:bg-gray-900 flex">
       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
       
       <main className={`flex-1 transition-all duration-200 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
-        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-4 px-4 py-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -103,7 +105,7 @@ export default function ExplorePage() {
         </div>
 
         <div className="px-4 py-8 lg:px-8 max-w-[850px] mx-auto">
-          <h1 className="text-3xl font-bold mb-2 text-center">Daftar Agent</h1>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white text-center mb-8">Daftar Agent</h1>
           <p className="text-gray-600 dark:text-gray-400 mb-8 text-center max-w-2xl mx-auto">
             Temukan dan pilih agent AI yang sesuai dengan kebutuhan Anda. Setiap agent memiliki keahlian dan
             pengetahuan khusus untuk membantu menyelesaikan tugas-tugas spesifik.
@@ -131,7 +133,7 @@ export default function ExplorePage() {
                   className={`pb-1 text-sm font-medium whitespace-nowrap ${
                     selectedTab === tab.name
                       ? 'text-gray-900 dark:text-white border-b-2 border-gray-900 dark:border-white'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
                   }`}
                 >
                   {tab.name}
@@ -141,44 +143,15 @@ export default function ExplorePage() {
           </div>
 
           {/* Agents Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {agents.map((agent) => (
-              <div
-                key={agent.id}
-                className="flex items-start gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              <AgentCard 
+                key={agent.id} 
+                agent={agent} 
                 onClick={() => setSelectedAgent(agent)}
-              >
-                <img
-                  src={agent.icon}
-                  alt={agent.name}
-                  className="w-12 h-12 rounded-full"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {agent.name}
-                    </h3>
-                    {agent.rating && (
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {agent.rating} ★
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                    {agent.description}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                    By {agent.provider}
-                  </p>
-                </div>
-              </div>
+              />
             ))}
           </div>
-
-          {/* See more button */}
-          <button className="w-full mt-8 py-3 px-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm text-gray-600 dark:text-gray-400 transition-colors">
-            See more
-          </button>
         </div>
       </main>
 
