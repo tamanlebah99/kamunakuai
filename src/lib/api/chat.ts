@@ -110,15 +110,15 @@ export async function getChatMessages(chatId: string): Promise<GetChatMessagesRe
 }
 
 export async function renameChat(chatId: string, newTitle: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/chat/rename`, {
-    method: 'PUT',
+  const response = await fetch(`${API_BASE_URL}/chat/edit`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${getAuthToken()}`,
     },
     body: JSON.stringify({
-      chat_id: chatId,
-      new_title: newTitle,
+      id: chatId,
+      chatName: newTitle,
     }),
   });
 

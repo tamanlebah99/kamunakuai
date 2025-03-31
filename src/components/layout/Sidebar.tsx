@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Menu, Search, Plus, User, ChevronDown, LogOut, Settings, Crown } from 'lucide-react';
-import { getRecentAgents, getChatHistory } from '@/lib/api/explore';
+import { Menu, Search, Plus, User, ChevronDown, LogOut, Settings, Crown, MessageSquare, MoreVertical, Edit2 } from 'lucide-react';
+import { getRecentAgents } from '@/lib/api/explore';
+import { getChatHistory as getChatHistoryApi, renameChat } from '@/lib/api/chat';
+import { getChatHistory as getChatHistorySidebar } from '@/lib/api/explore';
 import type { Agent, ChatHistory } from '@/lib/api/explore';
 
 interface SidebarProps {
@@ -14,6 +16,8 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeChatId = searchParams.get('chatId');
   const [searchQuery, setSearchQuery] = useState('');
   const [recentAgents, setRecentAgents] = useState<Agent[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatHistory>({
@@ -24,13 +28,16 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [username, setUsername] = useState<string>('');
+  const [editingChatId, setEditingChatId] = useState<string | null>(null);
+  const [newChatName, setNewChatName] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const [agents, history] = await Promise.all([
           getRecentAgents(),
-          getChatHistory()
+          getChatHistorySidebar()
         ]);
         setRecentAgents(agents);
         setChatHistory(history);
@@ -92,6 +99,92 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     }
   };
 
+  const loadChatHistory = async () => {
+    try {
+      const history = await getChatHistorySidebar();
+      setChatHistory(history);
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+  };
+
+  const handleRenameChat = async (chatId: string, newName: string) => {
+    try {
+      await renameChat(chatId, newName);
+      await loadChatHistory();
+      setEditingChatId(null);
+      setNewChatName('');
+      window.dispatchEvent(new Event('chat-updated'));
+    } catch (error) {
+      console.error('Error renaming chat:', error);
+    }
+  };
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingChatId && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [editingChatId]);
+
+  const renderChatButton = (chat: any) => (
+    <div key={chat.chat_id} className="relative group">
+      <div
+        onClick={() => router.push(`/chat?chatId=${chat.chat_id}`, { scroll: false })}
+        className={`w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg cursor-pointer ${
+          activeChatId === chat.chat_id.toString() ? 'bg-[hsl(262,80%,95%)] dark:bg-[hsl(262,80%,15%)]' : ''
+        }`}
+      >
+        <MessageSquare size={16} />
+        {editingChatId === chat.chat_id.toString() ? (
+          <form 
+            className="flex-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleRenameChat(chat.chat_id.toString(), newChatName);
+            }}
+          >
+            <input
+              ref={editInputRef}
+              type="text"
+              value={newChatName}
+              onChange={(e) => setNewChatName(e.target.value)}
+              className="w-full bg-white dark:bg-gray-900 text-sm rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[hsl(262,80%,75%)]"
+              onBlur={() => {
+                if (newChatName.trim()) {
+                  handleRenameChat(chat.chat_id.toString(), newChatName);
+                } else {
+                  setEditingChatId(null);
+                  setNewChatName('');
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setEditingChatId(null);
+                  setNewChatName('');
+                }
+              }}
+            />
+          </form>
+        ) : (
+          <>
+            <span className="truncate flex-1">{chat.title}</span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingChatId(chat.chat_id.toString());
+                setNewChatName(chat.title);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[hsl(262,80%,90%)] dark:hover:bg-[hsl(262,80%,20%)] rounded"
+            >
+              <Edit2 size={14} className="text-gray-500" />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <>
       {/* Overlay untuk mobile */}
@@ -104,81 +197,55 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
       {/* Sidebar */}
       <aside
-        className={`
-          fixed top-0 left-0 z-30 h-screen w-64 bg-[#f7f7f8] dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800
-          transform transition-transform duration-200 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+        className={`fixed top-0 left-0 z-30 h-screen w-64 bg-[hsl(262,80%,98%)] dark:bg-[hsl(262,80%,10%)] transform transition-transform duration-200 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Cari..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-2 py-1.5 text-sm bg-transparent focus:outline-none rounded-lg hover:bg-white dark:hover:bg-gray-800"
-              />
-            </div>
-            <button
-              onClick={() => router.push('/chat')}
-              className="p-2 hover:bg-white dark:hover:bg-gray-800 rounded-lg ml-2"
-            >
-              <Plus size={20} className="text-gray-500" />
+        {/* Search bar */}
+        <div className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Cari..."
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[hsl(262,80%,90%)] dark:border-[hsl(262,80%,20%)] bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-[hsl(262,80%,75%)]"
+            />
+            <button className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded">
+              <Plus size={20} className="text-[hsl(262,80%,75%)]" />
             </button>
           </div>
+        </div>
 
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto">
-            {/* Explore Agents */}
-            <Link
-              href="/explore"
-              className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white hover:bg-white dark:hover:bg-gray-800 block"
-            >
-              Jelajahi Agent
-            </Link>
-
-            {/* Recent Agents */}
-            <div className="px-4 py-2">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">AGENTS</h3>
-              <div className="space-y-1">
-                {recentAgents.map((agent) => (
-                  <button
-                    key={agent.id}
-                    onClick={() => router.push(`/chat?agent=${agent.id}`, { scroll: false })}
-                    className="w-full text-left px-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 rounded hover:bg-white dark:hover:bg-gray-800 flex items-center gap-2"
-                  >
-                    <img
-                      src={agent.icon}
-                      alt={agent.name}
-                      className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700"
-                    />
-                    <span className="truncate">{agent.name}</span>
-                  </button>
-                ))}
-              </div>
+        {/* Navigation */}
+        <nav className="p-4">
+          <div className="mb-4">
+            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              AGENTS
+            </h2>
+            <div className="mt-2 space-y-1">
+              {recentAgents.map((agent) => (
+                <button
+                  key={agent.id}
+                  onClick={() => router.push(`/chat?agent=${agent.id}`, { scroll: false })}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
+                >
+                  <img src={agent.icon} alt={agent.name} className="w-6 h-6 rounded-full" />
+                  <span>{agent.name}</span>
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Chat History */}
-            <div className="px-4 py-2">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">RIWAYAT CHAT</h3>
-              
+          <div className="mb-4">
+            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              RIWAYAT CHAT
+            </h2>
+            <div className="mt-2 space-y-1">
               {/* Today */}
               {chatHistory.today.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-xs text-gray-500 dark:text-gray-400 mb-1">Hari Ini</h4>
-                  {chatHistory.today.map((chat) => (
-                    <button
-                      key={chat.chat_id}
-                      onClick={() => router.push(`/chat?chatId=${chat.chat_id}`, { scroll: false })}
-                      className="w-full text-left px-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 rounded hover:bg-white dark:hover:bg-gray-800"
-                    >
-                      {chat.title}
-                    </button>
-                  ))}
+                  {chatHistory.today.map(renderChatButton)}
                 </div>
               )}
 
@@ -186,15 +253,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               {chatHistory.previous_7_days.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-xs text-gray-500 dark:text-gray-400 mb-1">7 Hari Terakhir</h4>
-                  {chatHistory.previous_7_days.map((chat) => (
-                    <button
-                      key={chat.chat_id}
-                      onClick={() => router.push(`/chat?chatId=${chat.chat_id}`, { scroll: false })}
-                      className="w-full text-left px-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 rounded hover:bg-white dark:hover:bg-gray-800"
-                    >
-                      {chat.title}
-                    </button>
-                  ))}
+                  {chatHistory.previous_7_days.map(renderChatButton)}
                 </div>
               )}
 
@@ -202,62 +261,39 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               {chatHistory.previous_30_days.length > 0 && (
                 <div>
                   <h4 className="text-xs text-gray-500 dark:text-gray-400 mb-1">30 Hari Terakhir</h4>
-                  {chatHistory.previous_30_days.map((chat) => (
-                    <button
-                      key={chat.chat_id}
-                      onClick={() => router.push(`/chat?chatId=${chat.chat_id}`, { scroll: false })}
-                      className="w-full text-left px-2 py-1.5 text-sm text-gray-700 dark:text-gray-300 rounded hover:bg-white dark:hover:bg-gray-800"
-                    >
-                      {chat.title}
-                    </button>
-                  ))}
+                  {chatHistory.previous_30_days.map(renderChatButton)}
                 </div>
               )}
             </div>
           </div>
+        </nav>
 
-          {/* Profile - Fixed at bottom */}
-          <div className="relative mt-auto border-t border-gray-200 dark:border-gray-800" ref={profileMenuRef}>
-            <button 
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-full px-4 py-3 flex items-center gap-3 hover:bg-white dark:hover:bg-gray-800"
-            >
-              <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                <User size={20} className="text-gray-500" />
-              </div>
-              <span className="flex-1 text-sm font-medium text-left text-gray-700 dark:text-gray-300">{username || 'Profil Saya'}</span>
-              <ChevronDown size={16} className={`text-gray-500 transform transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
-            </button>
+        {/* User profile */}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
+          >
+            <div className="w-8 h-8 rounded-full bg-[hsl(262,80%,75%)] flex items-center justify-center text-white">
+              {username ? username[0].toUpperCase() : 'U'}
+            </div>
+            <div className="flex-1 text-left">
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{username || 'User'}</div>
+            </div>
+            <ChevronDown className={`w-5 h-5 text-gray-400 transform transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
+          </button>
 
-            {/* Profile Dropdown Menu */}
-            {showProfileMenu && (
-              <div className="absolute bottom-[100%] left-0 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-lg overflow-hidden">
-                <div className="py-1">
-                  <button
-                    onClick={() => router.push('/settings')}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
-                  >
-                    <Settings size={16} className="text-gray-500" />
-                    <span>Pengaturan</span>
-                  </button>
-                  <button
-                    onClick={() => router.push('/upgrade')}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center gap-2"
-                  >
-                    <Crown size={16} className="text-gray-500" />
-                    <span>Tingkatkan Paket</span>
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-                  >
-                    <LogOut size={16} className="text-red-600" />
-                    <span>Keluar</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          {showProfileMenu && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 p-2 bg-white dark:bg-gray-900 border border-[hsl(262,80%,90%)] dark:border-[hsl(262,80%,20%)] rounded-lg shadow-lg">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
+              >
+                <LogOut size={16} />
+                <span>Keluar</span>
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>
