@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Link from 'next/link';
-import { Send, User } from 'lucide-react';
+import { Send, User, Heart } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -100,8 +100,8 @@ export default function Home() {
       {/* Header */}
       <header className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#4C1D95] via-[#5B21B6] to-[#4338CA] flex items-center justify-center shadow-lg">
-            <span className="text-xl font-bold text-white">K</span>
+          <div className="w-10 h-10 rounded-full bg-[#4C1D95] flex items-center justify-center">
+            <Heart className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-xl font-semibold">Kamunaku AI</h1>
         </Link>
@@ -114,7 +114,7 @@ export default function Home() {
           </Link>
           <Link
             href="/register"
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+            className="hidden md:block px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
           >
             Daftar
           </Link>
@@ -125,26 +125,27 @@ export default function Home() {
       <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full p-4">
         <div className="flex-1 flex flex-col items-center justify-center gap-8 mb-8">
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold">Apa yang bisa saya bantu?</h1>
+            <h1 className="text-2xl md:text-4xl font-bold">Apa yang bisa saya bantu?</h1>
           </div>
           
           {/* Input Form - Centered */}
           <div className="w-full max-w-2xl">
-            <form onSubmit={handleSubmit} className="relative">
+            <form onSubmit={handleSubmit} className="relative flex items-center gap-2 bg-white rounded-full shadow-lg border border-gray-100 px-6 py-3">
+              <User className="w-6 h-6 text-gray-400" />
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Tanyakan apa saja..."
-                className="w-full p-4 pr-12 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm"
+                placeholder="Ketik pesan..."
+                className="flex-1 px-2 bg-transparent border-0 focus:outline-none text-gray-600 placeholder:text-gray-400"
                 disabled={isLoading}
               />
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-6 h-6" />
               </button>
             </form>
           </div>
@@ -178,20 +179,17 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center py-4 text-sm text-gray-500 dark:text-gray-400">
-        <p className="mb-2">
+      <footer className="text-center py-4 text-sm text-gray-500">
+        <p>
           Dengan mengirim pesan ke Kamunaku AI, Anda menyetujui{' '}
-          <Link href="/terms" className="text-purple-600 hover:underline">
+          <Link href="/terms" className="font-bold text-gray-900 hover:underline">
             Ketentuan Layanan
           </Link>{' '}
           kami dan telah membaca{' '}
-          <Link href="/privacy" className="text-purple-600 hover:underline">
+          <Link href="/privacy" className="font-bold text-gray-900 hover:underline">
             Kebijakan Privasi
           </Link>{' '}
           kami.
-        </p>
-        <p>
-          Kamunaku AI dapat membuat kesalahan. Periksa informasi penting.
         </p>
       </footer>
     </div>

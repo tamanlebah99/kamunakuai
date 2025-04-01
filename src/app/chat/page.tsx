@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getChatHistory, renameChat } from '@/lib/api/chat';
+import { getChatHistory, renameChat, deleteChat } from '@/lib/api/chat';
 import { getAgentDetail } from '@/lib/api/explore';
 import { getAuthToken } from '@/lib/utils/auth';
 import type { Message } from '@/lib/api/chat';
@@ -10,9 +10,10 @@ import type { Agent, AgentDetail } from '@/lib/api/explore';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Share2, MoreVertical, Edit2, Menu, Send, Plus, Globe, Lightbulb, MoreHorizontal, ArrowUp } from 'lucide-react';
+import { Share2, MoreVertical, Edit2, Menu, Send, Plus, Globe, Lightbulb, MoreHorizontal, ArrowUp, Trash2 } from 'lucide-react';
 import { Tab, getTabs, getFeaturedAgents } from '@/lib/api/explore';
 import { Sidebar } from '@/components/layout/Sidebar';
+import Image from 'next/image';
 
 interface ChatItem {
   chat_id: string;
@@ -61,7 +62,26 @@ interface GetChatHistoryResponse {
   last_updated: string;
 }
 
+interface MessageResponse {
+  id: string;
+  message?: {
+    content: string;
+    type: string;
+  };
+  output?: string;
+}
+
 export default function ChatPage() {
+  return (
+    <div className="flex flex-col h-screen">
+      <Suspense fallback={<div>Loading...</div>}>
+        <ChatContent />
+      </Suspense>
+    </div>
+  );
+}
+
+function ChatContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const agentId = searchParams.get('agent');
@@ -103,7 +123,7 @@ export default function ChatPage() {
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          const transformedMessages = data.map((item: any) => ({
+          const transformedMessages = data.map((item: MessageResponse) => ({
             id: item.id?.toString() || Date.now().toString(),
             content: item.message?.content || item.output || '',
             role: (item.message?.type === 'human' ? 'user' : 'assistant') as 'user' | 'assistant',
@@ -112,37 +132,39 @@ export default function ChatPage() {
           setMessages(transformedMessages);
         }
       }
-    } catch (error) {
-      console.error('Error loading chat detail:', error);
+    } catch (err) {
+      console.error('Error loading chat detail:', err);
     }
   };
 
-  const handleNewChat = async (agent: ExtendedAgent, userId: string, authToken: string): Promise<NewChat> => {
-    const chatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/new', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify({
-        userId: userId,
-        agentId: agent.id,
-        agentName: agent.name
-      })
-    });
+  const handleNewChat = async (agent: ExtendedAgent, userId: string, token: string) => {
+    try {
+      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: userId,
+          agentId: agent.id,
+          chatName: agent.name
+        })
+      });
 
-    if (!chatResponse.ok) {
-      throw new Error('Failed to create new chat');
+      if (!response.ok) {
+        throw new Error('Failed to create new chat');
+      }
+
+      const data = await response.json();
+      return {
+        chatId: data.chatId,
+        createdAt: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error creating new chat:', error);
+      throw error;
     }
-
-    const data = await chatResponse.json();
-    // Pastikan data adalah array dan ambil item pertama
-    const agentData = Array.isArray(data) ? data[0] : data;
-    
-    return {
-      chatId: agentData.chatid,
-      createdAt: new Date().toISOString()
-    };
   };
 
     const checkAuth = () => {
@@ -515,6 +537,28 @@ export default function ChatPage() {
       await navigator.share(shareData);
     } catch (error) {
       console.error('Error sharing chat:', error);
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      const auth = checkAuth();
+      if (!auth) return;
+
+      await deleteChat(auth.user.id, chatId);
+      
+      // Refresh chat list
+      await handleChatUpdate();
+      
+      // If the deleted chat was active, redirect to home
+      if (chatId === selectedChat) {
+        router.push('/chat');
+        setMessages([]);
+        setSelectedChat(null);
+        setActiveChatTitle('');
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
     }
   };
 

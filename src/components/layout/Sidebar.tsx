@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Menu, Search, Plus, User, ChevronDown, LogOut, Settings, Crown, MessageSquare, MoreVertical, Edit2 } from 'lucide-react';
+import { Menu, Search, Plus, User, ChevronDown, LogOut, Settings, Crown, MessageSquare, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { getRecentAgents } from '@/lib/api/explore';
-import { getChatHistory as getChatHistoryApi, renameChat } from '@/lib/api/chat';
+import { getChatHistory as getChatHistoryApi, renameChat, deleteChat } from '@/lib/api/chat';
 import { getChatHistory as getChatHistorySidebar } from '@/lib/api/explore';
 import type { Agent, ChatHistory } from '@/lib/api/explore';
 
@@ -120,6 +120,34 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     }
   };
 
+  const handleDeleteChat = async (chatId: string) => {
+    try {
+      const auth = localStorage.getItem('auth');
+      if (!auth) return;
+
+      const authData = JSON.parse(auth);
+      await deleteChat(authData.user.id, chatId);
+      
+      // Load fresh data
+      const [agents, history] = await Promise.all([
+        getRecentAgents(),
+        getChatHistorySidebar()
+      ]);
+      setRecentAgents(agents);
+      setChatHistory(history);
+      
+      // If the deleted chat was active, redirect to home
+      if (activeChatId === chatId) {
+        router.push('/chat');
+      }
+
+      // Trigger chat-updated event for other components
+      window.dispatchEvent(new Event('chat-updated'));
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+    }
+  };
+
   // Focus input when editing starts
   useEffect(() => {
     if (editingChatId && editInputRef.current) {
@@ -169,16 +197,29 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         ) : (
           <>
             <span className="truncate flex-1">{chat.title}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditingChatId(chat.chat_id.toString());
-                setNewChatName(chat.title);
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[hsl(262,80%,90%)] dark:hover:bg-[hsl(262,80%,20%)] rounded"
-            >
-              <Edit2 size={14} className="text-gray-500" />
-            </button>
+            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingChatId(chat.chat_id.toString());
+                  setNewChatName(chat.title);
+                }}
+                className="p-1 hover:bg-[hsl(262,80%,90%)] dark:hover:bg-[hsl(262,80%,20%)] rounded"
+              >
+                <Edit2 size={14} className="text-gray-500" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm('Apakah Anda yakin ingin menghapus chat ini?')) {
+                    handleDeleteChat(chat.chat_id.toString());
+                  }
+                }}
+                className="p-1 hover:bg-[hsl(262,80%,90%)] dark:hover:bg-[hsl(262,80%,20%)] rounded"
+              >
+                <Trash2 size={14} className="text-red-500" />
+              </button>
+            </div>
           </>
         )}
       </div>

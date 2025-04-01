@@ -31,6 +31,72 @@ export function AgentDetailModal({ agent, onClose, onStartChat }: AgentDetailMod
     loadAgentDetail();
   }, [agent.id]);
 
+  const handleStarterClick = async (starter: string) => {
+    try {
+      const auth = localStorage.getItem('auth');
+      if (!auth) {
+        router.push('/login');
+        return;
+      }
+
+      const authData = JSON.parse(auth);
+      if (!authData.token || !authData.user) {
+        localStorage.removeItem('auth');
+        router.push('/login');
+        return;
+      }
+
+      // Buat chat baru
+      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/newid', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          userId: authData.user.id,
+          agentId: agent.id,
+          chatName: agent.name,
+          agentName: agent.name
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create new chat');
+      }
+
+      const data = await response.json();
+      const chatId = data.chatId;
+
+      // Kirim pesan starter
+      const chatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chatbot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          message: starter,
+          userId: authData.user.id,
+          chatId: chatId,
+          isAction: true,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (!chatResponse.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      // Tutup modal dan arahkan ke halaman chat
+      onClose();
+      router.push(`/chat?chatId=${chatId}`);
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      alert('Terjadi kesalahan saat memulai chat');
+    }
+  };
+
   if (isLoading) {
     return (
       <>
@@ -106,10 +172,7 @@ export function AgentDetailModal({ agent, onClose, onStartChat }: AgentDetailMod
               {agentDetail?.conversation_starters.map((starter, index) => (
                 <button
                   key={index}
-                  onClick={() => {
-                    onStartChat();
-                    router.push(`/chat?agent=${agent.id}&starter=${encodeURIComponent(starter)}`);
-                  }}
+                  onClick={() => handleStarterClick(starter)}
                   className="text-left p-4 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-[20px] text-sm text-gray-600 dark:text-gray-400 transition-colors shadow-[0_0_0_1px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)]"
                 >
                   {starter}

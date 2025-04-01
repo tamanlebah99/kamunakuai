@@ -110,8 +110,7 @@ export default function ExplorePage() {
         <div className="px-4 py-8 lg:px-8 max-w-[850px] mx-auto">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white text-center mb-8">Daftar Agent</h1>
           <p className="text-gray-600 dark:text-gray-400 mb-8 text-center max-w-2xl mx-auto">
-            Temukan dan pilih agent AI yang sesuai dengan kebutuhan Anda. Setiap agent memiliki keahlian dan
-            pengetahuan khusus untuk membantu menyelesaikan tugas-tugas spesifik.
+            Temukan dan pilih agent AI yang sesuai dengan kebutuhan Anda.
           </p>
 
           {/* Search input */}

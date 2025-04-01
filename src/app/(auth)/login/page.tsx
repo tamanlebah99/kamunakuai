@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { login, loginWithGoogle, loginWithFacebook } from '@/lib/api/auth';
+import { loginWithGoogle } from '@/lib/api/auth';
 import { GoogleLogin } from '@react-oauth/google';
 import { LoginForm } from '@/components/auth/LoginForm';
+import { Heart } from 'lucide-react';
 
 // Deklarasi tipe untuk window.google
 declare global {
@@ -14,9 +15,9 @@ declare global {
       accounts?: {
         id?: {
           cancel: () => void;
-          initialize: (params: any) => void;
+          initialize: (params: Record<string, unknown>) => void;
           prompt: () => void;
-          renderButton: (element: HTMLElement, options: any) => void;
+          renderButton: (element: HTMLElement, options: Record<string, unknown>) => void;
         };
       };
     };
@@ -25,10 +26,6 @@ declare global {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const [isGoogleReady, setIsGoogleReady] = useState(false);
 
   useEffect(() => {
@@ -53,8 +50,7 @@ export default function LoginPage() {
     };
   }, []);
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
-    setIsLoading(true);
+  const handleGoogleSuccess = async (credentialResponse: { credential: string }) => {
     try {
       console.log('Google credential:', credentialResponse);
       
@@ -83,49 +79,24 @@ export default function LoginPage() {
       
       localStorage.setItem('auth', JSON.stringify(authData));
       router.push('/explore');
-    } catch (error) {
-      console.error('Google login error:', error);
-      setError(error instanceof Error ? error.message : 'Terjadi kesalahan saat login dengan Google');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const response = await login({ email, password });
-      
-      // Pastikan format data konsisten
-      const authData = {
-        token: response.token,
-        user: {
-          id: response.user.id,
-          name: response.user.name,
-          email: response.user.email
-        }
-      };
-      
-      localStorage.setItem('auth', JSON.stringify(authData));
-      router.push('/explore');
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Terjadi kesalahan saat login');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      console.error('Google login error:', err);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
+    <div className="min-h-screen bg-white">
       <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <h2 className="text-center text-2xl font-bold leading-9 tracking-tight text-gray-900 dark:text-white">
+          <Link href="/" className="flex justify-center mb-8">
+            <div className="w-12 h-12 rounded-full bg-[#4C1D95] flex items-center justify-center">
+              <Heart className="w-6 h-6 text-white" />
+            </div>
+          </Link>
+          <h2 className="text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
             Selamat datang kembali
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+          <p className="mt-2 text-center text-sm text-gray-600">
             Silakan masuk ke akun Anda
           </p>
         </div>
@@ -145,36 +116,29 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <div className="flex justify-center">
-                {isGoogleReady && (
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={() => {
-                      console.error('Login Failed');
-                      setError('Login dengan Google gagal');
-                    }}
-                    useOneTap={false}
-                    type="standard"
-                    theme="outline"
-                    size="large"
-                    width="100%"
-                    text="continue_with"
-                    shape="pill"
-                    locale="id_ID"
-                  />
-                )}
+            <div className="mt-6">
+              <div className="w-full flex justify-center">
+                <div className="w-full">
+                  {isGoogleReady && (
+                    <div className="rounded-lg overflow-hidden">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => {
+                          console.error('Login Failed');
+                        }}
+                        useOneTap={false}
+                        type="standard"
+                        theme="outline"
+                        size="large"
+                        width="100%"
+                        text="continue_with"
+                        shape="rectangular"
+                        locale="id_ID"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-
-              <button
-                type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-2.5 text-sm font-semibold text-gray-900 dark:text-white shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4C1D95]"
-              >
-                <svg className="h-5 w-5 text-[#1877F2]" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M9.09815 24L9.15079 15.0964H4V10.9137H9.15079V7.96274C9.15079 2.53428 11.8666 0 16.7775 0C19.1238 0 20.8866 0.150446 21.4875 0.217996V4.34084L18.3333 4.34179C15.9109 4.34179 15.3657 5.4866 15.3657 7.16765V10.9137H22L20.3378 15.0964H15.3657V24H9.09815Z" />
-                </svg>
-                <span>Facebook</span>
-              </button>
             </div>
 
             <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">

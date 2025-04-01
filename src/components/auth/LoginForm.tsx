@@ -33,13 +33,13 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 rounded-lg">
+        <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg">
           {error}
         </div>
       )}
 
       <div>
-        <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900 dark:text-white">
+        <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
           Email
         </label>
         <div className="mt-2">
@@ -51,7 +51,7 @@ export function LoginForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="block w-full rounded-lg border border-gray-200 dark:border-gray-800 py-2 px-3 text-gray-900 dark:text-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4C1D95] sm:text-sm sm:leading-6 bg-white dark:bg-gray-900"
+            className="block w-full rounded-lg border border-gray-200 py-2 px-3 text-gray-900 shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4C1D95] sm:text-sm sm:leading-6 bg-white"
             placeholder="nama@email.com"
           />
         </div>
@@ -59,7 +59,7 @@ export function LoginForm() {
 
       <div>
         <div className="flex items-center justify-between">
-          <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900 dark:text-white">
+          <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
             Password
           </label>
           <div className="text-sm">
@@ -77,7 +77,7 @@ export function LoginForm() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="block w-full rounded-lg border border-gray-200 dark:border-gray-800 py-2 px-3 text-gray-900 dark:text-white shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4C1D95] sm:text-sm sm:leading-6 bg-white dark:bg-gray-900"
+            className="block w-full rounded-lg border border-gray-200 py-2 px-3 text-gray-900 shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#4C1D95] sm:text-sm sm:leading-6 bg-white"
             placeholder="••••••••"
           />
         </div>

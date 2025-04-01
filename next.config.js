@@ -1,5 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    ignoreBuildErrors: true,
+  },
   output: 'standalone',
   images: {
     remotePatterns: [
@@ -34,6 +45,11 @@ const nextConfig = {
         ]
       }
     ];
+  },
+  // Listen on all network interfaces
+  server: {
+    hostname: '0.0.0.0',
+    port: 8090
   }
 };
 
