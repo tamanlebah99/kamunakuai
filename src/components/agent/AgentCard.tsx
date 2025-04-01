@@ -12,21 +12,14 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
       onClick={onClick}
     >
       <img
-        src={agent.icon}
+        src={agent.icon_url}
         alt={agent.name}
-        className="w-12 h-12 rounded-full"
+        className="w-12 h-12 rounded-full object-cover"
       />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {agent.name}
-          </h3>
-          {agent.rating && (
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {agent.rating} ★
-            </span>
-          )}
-        </div>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          {agent.name}
+        </h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
           {agent.description}
         </p>

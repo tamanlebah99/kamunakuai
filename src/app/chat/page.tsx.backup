@@ -10,7 +10,7 @@ import type { Agent, AgentDetail } from '@/lib/api/explore';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Share2, MoreVertical, Edit2, Menu, Send, Plus, Globe, Lightbulb, MoreHorizontal, ArrowUp } from 'lucide-react';
+import { Share2, MoreVertical, Edit2, Menu, Send } from 'lucide-react';
 import { Tab, getTabs, getFeaturedAgents } from '@/lib/api/explore';
 import { Sidebar } from '@/components/layout/Sidebar';
 
@@ -45,11 +45,6 @@ interface ExtendedAgent extends Omit<Agent, 'id'> {
   category: string;
   conversation_count: number;
   conversation_starters: string[];
-  rating: string;
-  provider: string;
-  description: string;
-  icon_url: string;
-  name: string;
 }
 
 interface GetChatHistoryResponse {
@@ -102,15 +97,13 @@ export default function ChatPage() {
 
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const transformedMessages = data.map((item: any) => ({
-            id: item.id?.toString() || Date.now().toString(),
-            content: item.message?.content || item.output || '',
-            role: (item.message?.type === 'human' ? 'user' : 'assistant') as 'user' | 'assistant',
-            timestamp: new Date().toISOString()
-          }));
-          setMessages(transformedMessages);
-        }
+        const transformedMessages = data.map((item: any) => ({
+          id: item.id.toString(),
+          content: item.message.content,
+          role: item.message.type === 'human' ? 'user' : 'assistant',
+          timestamp: new Date().toISOString()
+        }));
+        setMessages(transformedMessages);
       }
     } catch (error) {
       console.error('Error loading chat detail:', error);
@@ -135,33 +128,30 @@ export default function ChatPage() {
       throw new Error('Failed to create new chat');
     }
 
-    const data = await chatResponse.json();
-    // Pastikan data adalah array dan ambil item pertama
-    const agentData = Array.isArray(data) ? data[0] : data;
-    
+    const chatData = await chatResponse.json();
     return {
-      chatId: agentData.chatid,
-      createdAt: new Date().toISOString()
+      chatId: chatData.chatId.toString(),
+      createdAt: chatData.createdAt
     };
   };
 
-    const checkAuth = () => {
-      const auth = localStorage.getItem('auth');
-      if (!auth) {
-        router.push('/login');
+  const checkAuth = () => {
+    const auth = localStorage.getItem('auth');
+    if (!auth) {
+      router.push('/login');
       return null;
-      }
-      try {
-        const authData = JSON.parse(auth);
-        if (!authData.token || !authData.user) {
-          localStorage.removeItem('auth');
-          router.push('/login');
-        return null;
-        }
-      return authData;
-      } catch (error) {
+    }
+    try {
+      const authData = JSON.parse(auth);
+      if (!authData.token || !authData.user) {
         localStorage.removeItem('auth');
         router.push('/login');
+        return null;
+      }
+      return authData;
+    } catch (error) {
+      localStorage.removeItem('auth');
+      router.push('/login');
       return null;
     }
   };
@@ -270,47 +260,45 @@ export default function ChatPage() {
         }
 
         // Load agent detail if agentId is present
-        if (agentId) {
-          try {
-            const chatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/new', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authData.token}`
-              },
-              body: JSON.stringify({
-                userId: authData.user.id,
-                agentId: agentId
-              })
-            });
+        if (agentId && starter) {
+          const agent = await getAgentDetail(agentId);
+          if (!agent) {
+            throw new Error('Agent not found');
+          }
+          setSelectedAgent(agent as ExtendedAgent);
+          setMessages([]); // Reset messages ketika agent baru dipilih
 
-            if (!chatResponse.ok) {
-              throw new Error('Failed to get agent template');
-            }
-
-            const data = await chatResponse.json();
-            const agentData = Array.isArray(data) ? data[0] : data;
+          // Cek apakah sudah ada chat dengan agent ini di session storage
+          const existingChatId = sessionStorage.getItem(`chat_${agentId}`);
+          
+          if (existingChatId) {
+            setSelectedChat(existingChatId);
+            // Load chat messages jika ada
+            await loadChatDetail(authData.user.id, existingChatId);
+          } else {
+            // Buat chat baru
+            const newChat = await handleNewChat(agent as ExtendedAgent, authData.user.id, authData.token);
+            setSelectedChat(newChat.chatId);
             
-            setSelectedAgent({
-              id: agentData.id,
-              name: agentData.name,
-              description: agentData.description,
-              provider: agentData.provider,
-              rating: agentData.rating,
-              category: agentData.category,
-              conversation_count: agentData.conversation_count,
-              conversation_starters: agentData.conversation_starters,
-              icon_url: agentData.icon_url
-            });
-            setMessages([]); // Reset messages ketika agent baru dipilih
-
             // Simpan chatId ke session storage
-            if (agentData.chatid) {
-              sessionStorage.setItem(`chat_${agentId}`, agentData.chatid);
-              setSelectedChat(agentData.chatid);
+            sessionStorage.setItem(`chat_${agentId}`, newChat.chatId);
+
+            // Tambahkan chat baru ke daftar riwayat chat
+            if (newChat.chatId) {
+              setChats(prev => ({
+                ...prev,
+                today: [
+                  {
+                    chat_id: newChat.chatId,
+                    title: agent.name,
+                    timestamp: newChat.createdAt
+                  },
+                  ...prev.today
+                ]
+              }));
             }
 
-            // Kirim starter message jika ada
+            // Kirim starter message
             if (starter) {
               const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chatbot', {
                 method: 'POST',
@@ -321,7 +309,7 @@ export default function ChatPage() {
                 body: JSON.stringify({
                   message: decodeURIComponent(starter),
                   userId: authData.user.id,
-                  chatId: agentData.chatid,
+                  chatId: newChat.chatId,
                   isAction: true,
                   timestamp: new Date().toISOString()
                 })
@@ -344,8 +332,6 @@ export default function ChatPage() {
                 setMessages([userMessage, assistantMessage]);
               }
             }
-          } catch (error) {
-            console.error('Error loading agent template:', error);
           }
         }
       } catch (error) {
@@ -376,7 +362,7 @@ export default function ChatPage() {
 
   const handleSendMessage = async (messageText?: string) => {
     if ((!messageText && !inputMessage.trim()) || isSending) return;
-
+    
     const textToSend = messageText || inputMessage.trim();
     setIsSending(true);
     
@@ -391,40 +377,31 @@ export default function ChatPage() {
 
       const timestamp = new Date().toISOString();
 
-      // Jika belum ada selectedChat atau chatId, buat chat baru
-      let currentChatId = selectedChat || chatId;
-      
-      if (!currentChatId) {
-        // Jika tidak ada agent yang dipilih, gunakan agent default atau tampilkan pesan error
-        if (!selectedAgent && !agentId) {
-          throw new Error('Silakan pilih agent terlebih dahulu');
-        }
-
+      // Jika belum ada selectedChat, buat chat baru
+      let currentChatId = selectedChat;
+      if (!currentChatId && selectedAgent && agentId) {
         try {
-          // Dapatkan chatId baru dari webhook/chat/newid
-          const newChatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/newid', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authData.token}`
-            },
-            body: JSON.stringify({
-              userId: userId,
-              agentId: selectedAgent?.id || agentId,
-              agentName: selectedAgent?.name || 'Unknown Agent'
-            })
-          });
-
-          if (!newChatResponse.ok) {
-            throw new Error('Gagal membuat chat baru');
+          // Pastikan agent masih tersedia
+          const agent = await getAgentDetail(agentId);
+          if (!agent) {
+            throw new Error('Agent not found');
           }
-
-          const newChatData = await newChatResponse.json();
-          currentChatId = newChatData.chatId;
+          const newChat = await handleNewChat(agent as ExtendedAgent, userId, authData.token);
+          currentChatId = newChat.chatId;
           setSelectedChat(currentChatId);
 
-          // Update URL dengan chatId baru
-          router.push(`/chat?chatId=${currentChatId}`, { scroll: false });
+          // Tambahkan chat baru ke daftar riwayat chat
+          setChats(prev => ({
+            ...prev,
+            today: [
+              {
+                chat_id: newChat.chatId,
+                title: agent.name,
+                timestamp: newChat.createdAt
+              },
+              ...prev.today
+            ]
+          }));
         } catch (error) {
           console.error('Error creating new chat:', error);
           throw error;
@@ -432,7 +409,7 @@ export default function ChatPage() {
       }
 
       if (!currentChatId) {
-        throw new Error('Tidak dapat membuat chat baru');
+        throw new Error('No chat ID available');
       }
       
       const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chatbot', {
@@ -451,13 +428,10 @@ export default function ChatPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Gagal mengirim pesan');
+        throw new Error('Failed to send message');
       }
 
       const data = await response.json();
-      
-      // Refresh chat history sebelum update messages
-      await handleChatUpdate();
       
       const userMessage = {
         id: Date.now().toString(),
@@ -475,10 +449,8 @@ export default function ChatPage() {
 
       setMessages(prev => [...prev, userMessage, assistantMessage]);
       setInputMessage('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error sending message:', error);
-      // Tampilkan pesan error ke user
-      alert(error.message || 'Terjadi kesalahan saat mengirim pesan');
     } finally {
       setIsSending(false);
     }
@@ -538,12 +510,12 @@ export default function ChatPage() {
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-4 px-4 py-4">
-              <button
+            <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
             >
               <Menu size={20} className="text-gray-500" />
-              </button>
+            </button>
             <h2 className="font-semibold text-gray-900 dark:text-white">
               {activeChatTitle || 'Chat'}
             </h2>
@@ -551,55 +523,39 @@ export default function ChatPage() {
         </div>
 
         {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="max-w-3xl mx-auto space-y-4">
+        <div className="flex-1 p-8 overflow-y-auto">
+          <div className="max-w-3xl mx-auto">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                {selectedAgent && (
-                  <>
-                    <img
-                      src={selectedAgent.icon_url}
-                      alt={selectedAgent.name}
-                      className="w-16 h-16 rounded-full mb-4 bg-gray-100"
-                    />
-                    <h1 className="text-2xl font-semibold mb-2 text-gray-900 dark:text-white">
-                      {selectedAgent.name}
-                    </h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-2">
-                      By {selectedAgent.provider}
-                    </p>
-                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-6">
-                      <div className="flex items-center gap-1">
-                        <span className="font-semibold">{selectedAgent.rating}</span>
-                        <span className="text-yellow-500">★</span>
-                      </div>
-                      <span className="text-gray-300 dark:text-gray-700">|</span>
-                      <span>#{1} in {selectedAgent.category}</span>
-                      <span className="text-gray-300 dark:text-gray-700">|</span>
-                      <span>{(selectedAgent.conversation_count / 1000000).toFixed(0)}M+ Conversations</span>
-                    </div>
-                    <p className="text-gray-600 dark:text-gray-400 text-center max-w-md mb-8">
-                      {selectedAgent.description}
-                    </p>
-                  </>
-                )}
+              <div>
+                <div className="mb-8 text-center">
+                  {selectedAgent && (
+                    <>
+                      <img
+                        src={selectedAgent.icon_url}
+                        alt={selectedAgent.name}
+                        className="w-16 h-16 rounded-full mx-auto mb-4"
+                      />
+                      <h1 className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">
+                        {selectedAgent.name}
+                      </h1>
+                      <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                        {selectedAgent.description}
+                      </p>
+                    </>
+                  )}
+                </div>
 
                 {selectedAgent?.conversation_starters && (
-                  <div className="w-full max-w-xl">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4">
-                      Conversation Starters
-                    </h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedAgent.conversation_starters.map((starter, index) => (
-                        <button
-                          key={index}
-                          onClick={() => handleSendMessage(starter)}
-                          className="text-left p-4 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-[20px] text-sm text-gray-600 dark:text-gray-400 transition-colors shadow-[0_0_0_1px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)]"
-                        >
-                          {starter}
-                        </button>
-                  ))}
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedAgent.conversation_starters.map((starter, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSendMessage(starter)}
+                        className="text-left p-4 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-[20px] text-sm text-gray-600 dark:text-gray-400 transition-colors shadow-[0_0_0_1px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)]"
+                      >
+                        {starter}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -607,19 +563,23 @@ export default function ChatPage() {
               messages.map((message, index) => (
                 <div
                   key={message.id}
-                  className={`${
-                    message.role === 'user' 
-                      ? 'flex w-full flex-col gap-1 empty:hidden items-end rtl:items-start'
-                      : 'flex items-start empty:hidden'
+                  className={`flex items-start gap-4 mb-8 ${
+                    message.role === 'user' ? 'justify-end' : ''
                   }`}
                 >
+                  {message.role !== 'user' && selectedAgent && (
+                    <img
+                      src={selectedAgent.icon_url}
+                      alt={selectedAgent.name}
+                      className="w-8 h-8 rounded-full"
+                    />
+                  )}
                   <div
-                    className={`p-4 rounded-2xl text-sm ${
+                    className={`flex-1 max-w-3xl p-4 rounded-2xl ${
                       message.role === 'user'
-                        ? 'bg-[hsl(262,80%,95%)] text-gray-700'
-                        : 'bg-white dark:bg-gray-800 flex-1'
+                        ? 'bg-blue-500 text-white ml-12'
+                        : 'bg-gray-100 dark:bg-gray-800 mr-12'
                     }`}
-                    style={message.role === 'user' ? { maxWidth: '75%' } : undefined}
                   >
                     <ReactMarkdown
                       components={{
@@ -655,35 +615,32 @@ export default function ChatPage() {
               <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-500 dark:border-gray-400 border-t-transparent"></div>
                 <span>Mengirim...</span>
-            </div>
-          )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Chat Input */}
         <div className="p-4">
-          <div className="max-w-3xl mx-auto space-y-4">
+          <div className="max-w-3xl mx-auto">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSendMessage();
               }}
-              className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden"
+              className="flex items-end gap-4"
             >
-              <div className="flex items-center gap-2 p-2">
-                <button
-                  type="button"
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                >
-                  <Plus size={20} className="text-gray-500" />
-                </button>
-                
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
+              <div className="flex-1">
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
                   placeholder="Ketik pesan..."
-                  className="flex-1 px-4 py-2 bg-transparent focus:outline-none text-gray-700 dark:text-gray-300"
+                  rows={1}
+                  className="w-full p-4 rounded-2xl bg-gray-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  style={{
+                    minHeight: '56px',
+                    maxHeight: '200px'
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -692,41 +649,15 @@ export default function ChatPage() {
                   }}
                 />
               </div>
-
-              <div className="flex items-center gap-2 px-2 pb-2">
-                <button
-                  type="button"
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                >
-                  <Globe size={16} />
-                  <span>Search</span>
-                </button>
-                
-                <button
-                  type="button"
-                  className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                >
-                  <Lightbulb size={16} />
-                  <span>Reason</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                >
-                  <MoreHorizontal size={16} className="text-gray-500" />
-                </button>
-
               <button
-                  type="button"
-                  className="p-2 bg-black hover:bg-gray-900 rounded-full ml-auto"
+                type="submit"
+                disabled={!inputMessage.trim() || isSending}
+                className="p-4 rounded-xl bg-blue-500 text-white font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                  <ArrowUp size={16} className="text-white" />
+                Kirim
               </button>
-            </div>
-          </form>
-
-            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            </form>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4">
               Kamunaku AI dapat membuat kesalahan. Periksa informasi penting.
             </p>
           </div>

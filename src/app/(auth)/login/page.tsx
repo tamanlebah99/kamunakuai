@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { login, loginWithGoogle, loginWithFacebook } from '@/lib/api/auth';
 import { GoogleLogin } from '@react-oauth/google';
+import { LoginForm } from '@/components/auth/LoginForm';
 
 // Deklarasi tipe untuk window.google
 declare global {
@@ -118,98 +119,33 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col">
-      {/* Header */}
-      <header className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
-        <Link href="/" className="flex items-center gap-2">
-          <h1 className="text-xl font-semibold">Kamunaku AI</h1>
-        </Link>
-      </header>
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
+          <h2 className="text-center text-2xl font-bold leading-9 tracking-tight text-gray-900 dark:text-white">
+            Selamat datang kembali
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+            Silakan masuk ke akun Anda
+          </p>
+        </div>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold">Selamat datang kembali</h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Silakan masuk ke akun Anda
-            </p>
-          </div>
+        <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+          <LoginForm />
 
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                  placeholder="nama@email.com"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed"
-              >
-                {isLoading ? 'Memuat...' : 'Masuk'}
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                  Lupa password?
-                </Link>
-              </div>
-              <div className="text-sm">
-                <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-                  Belum punya akun?
-                </Link>
-              </div>
-            </div>
-          </form>
-
-          <div className="mt-6">
+          <div className="mt-6 text-center">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
+                <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-gray-900 text-gray-500">Atau lanjutkan dengan</span>
+                <span className="bg-white dark:bg-gray-900 px-2 text-gray-500 dark:text-gray-400">
+                  Atau lanjutkan dengan
+                </span>
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="mt-6 grid grid-cols-2 gap-4">
               <div className="flex justify-center">
                 {isGoogleReady && (
                   <GoogleLogin
@@ -220,33 +156,36 @@ export default function LoginPage() {
                     }}
                     useOneTap={false}
                     type="standard"
-                    theme="filled_blue"
+                    theme="outline"
                     size="large"
-                    width="250"
-                    context="signin"
-                    auto_select={false}
-                    itp_support={false}
+                    width="100%"
+                    text="continue_with"
+                    shape="pill"
+                    locale="id_ID"
                   />
                 )}
               </div>
 
               <button
-                onClick={() => {}}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
+                type="button"
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-3 py-2.5 text-sm font-semibold text-gray-900 dark:text-white shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4C1D95]"
               >
-                <span className="sr-only">Sign in with Facebook</span>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path
-                    fillRule="evenodd"
-                    d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"
-                    clipRule="evenodd"
-                  />
+                <svg className="h-5 w-5 text-[#1877F2]" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M9.09815 24L9.15079 15.0964H4V10.9137H9.15079V7.96274C9.15079 2.53428 11.8666 0 16.7775 0C19.1238 0 20.8866 0.150446 21.4875 0.217996V4.34084L18.3333 4.34179C15.9109 4.34179 15.3657 5.4866 15.3657 7.16765V10.9137H22L20.3378 15.0964H15.3657V24H9.09815Z" />
                 </svg>
+                <span>Facebook</span>
               </button>
             </div>
+
+            <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+              Belum punya akun?{' '}
+              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+                Daftar sekarang
+              </Link>
+            </p>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 } 

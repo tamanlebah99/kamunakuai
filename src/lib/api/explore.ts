@@ -8,18 +8,17 @@ const getAuthData = () => {
 };
 
 export interface Tab {
-  id: string;
-  name: string;
+  category_id: number;
+  category_name: string;
+  sequence: number;
 }
 
 export interface Agent {
-  id: number;
+  id: string;
   name: string;
   description: string;
   provider: string;
-  provider_url: string;
-  icon: string;
-  rating?: number;
+  icon_url: string;
 }
 
 export interface ChatItem {
@@ -34,7 +33,13 @@ export interface ChatHistory {
   previous_30_days: ChatItem[];
 }
 
-export interface AgentDetail extends Agent {
+export interface AgentDetail {
+  id: string;
+  name: string;
+  description: string;
+  provider: string;
+  icon_url: string;
+  rating: string;
   category: string;
   conversation_count: number;
   conversation_starters: string[];
@@ -59,18 +64,14 @@ export async function getTabs(): Promise<Tab[]> {
       throw new Error('Failed to fetch tabs');
     }
 
-    const data = await response.json();
-    return data.map((name: string, index: number) => ({
-      id: index.toString(),
-      name,
-    }));
+    return await response.json();
   } catch (error) {
     console.error('Error fetching tabs:', error);
     return [];
   }
 }
 
-export async function getFeaturedAgents(tab: string): Promise<Agent[]> {
+export async function getFeaturedAgents(categoryId: number): Promise<Agent[]> {
   try {
     const authData = getAuthData();
     const userId = authData.user?.id;
@@ -79,7 +80,7 @@ export async function getFeaturedAgents(tab: string): Promise<Agent[]> {
       throw new Error('User ID not found');
     }
 
-    const response = await fetch(`${API_BASE_URL}/explore/featured-agents?tab=${encodeURIComponent(tab)}&userId=${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/explore/featured-agents?userId=${userId}&categoryId=${categoryId}`, {
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
       },
@@ -89,12 +90,7 @@ export async function getFeaturedAgents(tab: string): Promise<Agent[]> {
       throw new Error('Failed to fetch featured agents');
     }
 
-    const data = await response.json();
-    return data.map((agent: any) => ({
-      ...agent,
-      provider_url: `https://${agent.provider}`,
-      rating: agent.description.match(/(\d+\.?\d*)\s*★/) ? parseFloat(agent.description.match(/(\d+\.?\d*)\s*★/)[1]) : undefined
-    }));
+    return await response.json();
   } catch (error) {
     console.error('Error fetching featured agents:', error);
     return [];
@@ -133,48 +129,6 @@ export async function getRecentAgents(): Promise<Agent[]> {
 }
 
 export async function getChatHistory(): Promise<ChatHistory> {
-  // Mock data untuk testing
-  return {
-    today: [
-      {
-        chat_id: 6,
-        title: "Chat 06",
-        timestamp: "2023-03-30T10:00:00Z"
-      }
-    ],
-    previous_7_days: [
-      {
-        chat_id: 1,
-        title: "Chat 01",
-        timestamp: "2023-03-28T12:30:00Z"
-      },
-      {
-        chat_id: 2,
-        title: "Chat 02",
-        timestamp: "2023-03-27T09:45:00Z"
-      },
-      {
-        chat_id: 3,
-        title: "Chat 03",
-        timestamp: "2023-03-26T15:20:00Z"
-      }
-    ],
-    previous_30_days: [
-      {
-        chat_id: 4,
-        title: "Chat 04",
-        timestamp: "2023-03-15T08:10:00Z"
-      },
-      {
-        chat_id: 5,
-        title: "Chat 05",
-        timestamp: "2023-03-10T14:50:00Z"
-      }
-    ]
-  };
-}
-
-export async function getAgentDetail(agentId: number): Promise<AgentDetail> {
   try {
     const authData = getAuthData();
     const userId = authData.user?.id;
@@ -183,7 +137,42 @@ export async function getAgentDetail(agentId: number): Promise<AgentDetail> {
       throw new Error('User ID not found');
     }
 
-    const response = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/agents/detail?userId=${userId}&agentId=${agentId}`, {
+    const response = await fetch(`${API_BASE_URL}/chat/history-sidebar?userId=${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch chat history');
+    }
+
+    const data = await response.json();
+    return data[0] || {
+      today: [],
+      previous_7_days: [],
+      previous_30_days: []
+    };
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    return {
+      today: [],
+      previous_7_days: [],
+      previous_30_days: []
+    };
+  }
+}
+
+export async function getAgentDetail(agentId: string): Promise<AgentDetail> {
+  try {
+    const authData = getAuthData();
+    const userId = authData.user?.id;
+
+    if (!userId) {
+      throw new Error('User ID not found');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/agents/detail?userId=${userId}&agentId=${agentId}`, {
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`,
       },
@@ -193,7 +182,8 @@ export async function getAgentDetail(agentId: number): Promise<AgentDetail> {
       throw new Error('Failed to fetch agent details');
     }
 
-    return await response.json();
+    const data = await response.json();
+    return data[0];  // Response adalah array, ambil item pertama
   } catch (error) {
     console.error('Error fetching agent details:', error);
     throw error;

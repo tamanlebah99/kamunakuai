@@ -1,7 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
   experimental: {
-    webpackBuildWorker: true,
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'kamunakuai.fly.dev'],
+    },
   },
   webpack: (config) => {
     config.externals.push({

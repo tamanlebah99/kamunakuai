@@ -199,27 +199,44 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       <aside
         className={`fixed top-0 left-0 z-30 h-screen w-64 bg-[hsl(262,80%,98%)] dark:bg-[hsl(262,80%,10%)] transform transition-transform duration-200 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        } flex flex-col`}
       >
-        {/* Search bar */}
+        {/* Search and New Chat */}
         <div className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <div className="relative flex items-center">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Cari..."
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[hsl(262,80%,90%)] dark:border-[hsl(262,80%,20%)] bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-[hsl(262,80%,75%)]"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-12 py-2 text-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(262,80%,75%)]"
             />
-            <button className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded">
-              <Plus size={20} className="text-[hsl(262,80%,75%)]" />
+            <button
+              onClick={() => router.push('/chat')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
+            >
+              <Plus size={16} className="text-[hsl(262,80%,75%)]" />
             </button>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="p-4">
-          <div className="mb-4">
-            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Menu */}
+          <nav className="px-4 pb-4">
+            <Link
+              href="/explore"
+              className="flex items-center gap-3 px-2 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
+            >
+              <Crown size={16} />
+              Explore Agent
+            </Link>
+          </nav>
+
+          {/* Agents */}
+          <div className="px-4 pb-4">
+            <h2 className="px-2 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500">
               AGENTS
             </h2>
             <div className="mt-2 space-y-1">
@@ -227,24 +244,25 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 <button
                   key={agent.id}
                   onClick={() => router.push(`/chat?agent=${agent.id}`, { scroll: false })}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
+                  className="w-full flex items-center gap-3 px-2 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
                 >
-                  <img src={agent.icon} alt={agent.name} className="w-6 h-6 rounded-full" />
-                  <span>{agent.name}</span>
+                  <img src={agent.icon_url} alt={agent.name} className="w-6 h-6 rounded-full" />
+                  <span className="text-left">{agent.name}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="mb-4">
-            <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          {/* RIWAYAT CHAT */}
+          <div className="px-4 pb-4">
+            <h2 className="px-2 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500">
               RIWAYAT CHAT
             </h2>
             <div className="mt-2 space-y-1">
               {/* Today */}
               {chatHistory.today.length > 0 && (
                 <div className="mb-4">
-                  <h4 className="text-xs text-gray-500 dark:text-gray-400 mb-1">Hari Ini</h4>
+                  <h4 className="px-2 text-xs text-gray-500 dark:text-gray-400 mb-1">Hari Ini</h4>
                   {chatHistory.today.map(renderChatButton)}
                 </div>
               )}
@@ -252,7 +270,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               {/* Previous 7 days */}
               {chatHistory.previous_7_days.length > 0 && (
                 <div className="mb-4">
-                  <h4 className="text-xs text-gray-500 dark:text-gray-400 mb-1">7 Hari Terakhir</h4>
+                  <h4 className="px-2 text-xs text-gray-500 dark:text-gray-400 mb-1">7 Hari Terakhir</h4>
                   {chatHistory.previous_7_days.map(renderChatButton)}
                 </div>
               )}
@@ -260,40 +278,42 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               {/* Previous 30 days */}
               {chatHistory.previous_30_days.length > 0 && (
                 <div>
-                  <h4 className="text-xs text-gray-500 dark:text-gray-400 mb-1">30 Hari Terakhir</h4>
+                  <h4 className="px-2 text-xs text-gray-500 dark:text-gray-400 mb-1">30 Hari Terakhir</h4>
                   {chatHistory.previous_30_days.map(renderChatButton)}
                 </div>
               )}
             </div>
           </div>
-        </nav>
+        </div>
 
-        {/* User profile */}
-        <div className="absolute bottom-0 left-0 right-0 p-4">
-          <button
-            onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
-          >
-            <div className="w-8 h-8 rounded-full bg-[hsl(262,80%,75%)] flex items-center justify-center text-white">
-              {username ? username[0].toUpperCase() : 'U'}
-            </div>
-            <div className="flex-1 text-left">
-              <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{username || 'User'}</div>
-            </div>
-            <ChevronDown className={`w-5 h-5 text-gray-400 transform transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
-          </button>
+        {/* User profile - always at bottom */}
+        <div className="mt-auto p-4 bg-[hsl(262,80%,98%)] dark:bg-[hsl(262,80%,10%)]">
+          <div ref={profileMenuRef} className="relative">
+            <button
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
+            >
+              <div className="w-8 h-8 rounded-full bg-[hsl(262,80%,75%)] flex items-center justify-center text-white">
+                {username ? username[0].toUpperCase() : 'U'}
+              </div>
+              <div className="flex-1 text-left">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-200">{username || 'User'}</div>
+              </div>
+              <ChevronDown className={`w-5 h-5 text-gray-400 transform transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
+            </button>
 
-          {showProfileMenu && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 p-2 bg-white dark:bg-gray-900 border border-[hsl(262,80%,90%)] dark:border-[hsl(262,80%,20%)] rounded-lg shadow-lg">
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
-              >
-                <LogOut size={16} />
-                <span>Keluar</span>
-              </button>
-            </div>
-          )}
+            {showProfileMenu && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 p-2 bg-white dark:bg-gray-900 border border-[hsl(262,80%,90%)] dark:border-[hsl(262,80%,20%)] rounded-lg shadow-lg z-50">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
+                >
+                  <LogOut size={16} />
+                  <span>Keluar</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
     </>

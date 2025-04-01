@@ -68,7 +68,7 @@ export function AgentDetailModal({ agent, onClose, onStartChat }: AgentDetailMod
           {/* Agent Info */}
           <div className="flex flex-col items-center text-center mb-8">
             <img
-              src={agent.icon}
+              src={agent.icon_url}
               alt={agent.name}
               className="w-16 h-16 rounded-full mb-4 bg-gray-100 dark:bg-gray-800"
             />
@@ -85,7 +85,7 @@ export function AgentDetailModal({ agent, onClose, onStartChat }: AgentDetailMod
                   <span className="text-yellow-500">★</span>
                 </div>
                 <span className="text-gray-300 dark:text-gray-700">|</span>
-                <span>#{agentDetail.category === 'Writing' ? '1' : '2'} in {agentDetail.category}</span>
+                <span>#{1} in {agentDetail.category}</span>
                 <span className="text-gray-300 dark:text-gray-700">|</span>
                 <span>{(agentDetail.conversation_count / 1000000).toFixed(0)}M+ Conversations</span>
               </div>
@@ -127,7 +127,7 @@ export function AgentDetailModal({ agent, onClose, onStartChat }: AgentDetailMod
             className="w-full mt-8 py-3 px-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
           >
             <MessageCircle size={20} />
-            <span>Start Chat</span>
+            <span>Mulai Chat</span>
           </button>
         </div>
       </div>
