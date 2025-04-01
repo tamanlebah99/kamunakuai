@@ -1,22 +1,29 @@
-app = "kamunakuai"
-primary_region = "sin"
+# fly.toml app configuration file generated for kamunakuai on 2025-04-01T10:40:45+07:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'kamunakuai'
+primary_region = 'sin'
 
 [build]
   [build.args]
-    NEXT_PUBLIC_API_URL = "https://coachbot-n8n-01.fly.dev"
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID = "394122359778-fjkqodqq7brmtakfipce8a8b3ib0kjcj.apps.googleusercontent.com"
 
 [env]
-  PORT = "8080"
+  PORT = '8090'
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID = "394122359778-fjkqodqq7brmtakfipce8a8b3ib0kjcj.apps.googleusercontent.com"
+  NEXT_PUBLIC_API_URL = "https://kamunakuai.fly.dev/api"
 
 [http_service]
-  internal_port = 8080
+  internal_port = 8090
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ["app"]
+  processes = ['app']
 
 [[vm]]
-  memory = "1gb"
-  cpu_kind = "shared"
-  cpus = 1 
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
