@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
-import { login } from '@/lib/api/auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ export function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,22 +18,53 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      const response = await login({ email, password });
-      if (response.token) {
-        localStorage.setItem('auth', JSON.stringify(response));
+      const response = await fetch(`${API_BASE_URL}/webhook/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.isValid) {
+        // Login berhasil
+        const authData = {
+          user: {
+            id: data.id,
+            email: data.email,
+            name: data.name
+          }
+        };
+        localStorage.setItem('auth', JSON.stringify(authData));
         router.push('/explore');
       } else {
-        setError('Login gagal. Silakan coba lagi.');
+        // Login gagal
+        setError(data.message || 'Login gagal. Silakan coba lagi.');
       }
     } catch (error) {
+      console.error('Error:', error);
       setError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Tampilkan pesan sukses jika baru selesai registrasi
+  const isJustRegistered = searchParams.get('registered') === 'true';
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {isJustRegistered && (
+        <div className="p-3 text-sm text-green-600 bg-green-50 rounded-lg">
+          Registrasi berhasil! Silakan login dengan akun Anda.
+        </div>
+      )}
+      
       {error && (
         <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg">
           {error}

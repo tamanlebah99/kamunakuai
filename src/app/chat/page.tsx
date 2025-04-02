@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { getChatHistory, renameChat, deleteChat } from '@/lib/api/chat';
+import { useEffect, useState, Suspense, useRef } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { renameChat, deleteChat } from '@/lib/api/chat';
 import { getAgentDetail } from '@/lib/api/explore';
 import { getAuthToken } from '@/lib/utils/auth';
 import type { Message } from '@/lib/api/chat';
@@ -14,6 +14,10 @@ import { Share2, MoreVertical, Edit2, Menu, Send, Plus, Globe, Lightbulb, MoreHo
 import { Tab, getTabs, getFeaturedAgents } from '@/lib/api/explore';
 import { Sidebar } from '@/components/layout/Sidebar';
 import Image from 'next/image';
+import { useChat } from '@/contexts/ChatContext';
+import { checkAuth } from '@/lib/auth';
+import clsx from 'clsx';
+import { Components } from 'react-markdown';
 
 interface ChatItem {
   chat_id: string;
@@ -51,6 +55,7 @@ interface ExtendedAgent extends Omit<Agent, 'id'> {
   description: string;
   icon_url: string;
   name: string;
+  webhook_url: string;
 }
 
 interface GetChatHistoryResponse {
@@ -71,6 +76,40 @@ interface MessageResponse {
   output?: string;
 }
 
+interface CodeProps {
+  inline?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}
+
+const Code: React.FC<CodeProps> = ({ inline = false, className, children }) => {
+  const match = /language-(\w+)/.exec(className || '');
+  return !inline && match ? (
+    <pre className="relative">
+      <code className={className}>{children}</code>
+    </pre>
+  ) : (
+    <code className={className}>{children}</code>
+  );
+};
+
+const markdownComponents: Components = {
+  code: ({ className, children }) => {
+    const match = /language-(\w+)/.exec(className || '');
+    return match ? (
+      <SyntaxHighlighter
+        style={tomorrow as any}
+        language={match[1]}
+        PreTag="div"
+      >
+        {String(children).replace(/\n$/, '')}
+      </SyntaxHighlighter>
+    ) : (
+      <code className={className}>{children}</code>
+    );
+  }
+};
+
 export default function ChatPage() {
   return (
     <div className="flex flex-col h-screen">
@@ -83,21 +122,16 @@ export default function ChatPage() {
 
 function ChatContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const agentId = searchParams.get('agent');
   const starter = searchParams.get('starter');
   const chatId = searchParams.get('chatId');
+  const isFromRecent = searchParams.get('_src') === '1dw3y';
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<ExtendedAgent | null>(null);
-  const [chats, setChats] = useState<ChatHistoryResponse>({
-    today: [],
-    previous_7_days: [],
-    previous_30_days: []
-  });
-  const [activeChatTitle, setActiveChatTitle] = useState<string>('');
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -106,420 +140,313 @@ function ChatContent() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedTab, setSelectedTab] = useState<Tab>({ category_id: 1, category_name: 'Pengembangan Diri', sequence: 1 });
 
-  const loadChatDetail = async (userId: string, chatId: string) => {
-    try {
-      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
-        body: JSON.stringify({
-          userId: userId,
-          chatId: chatId
-        })
-      });
+  const lastFetchedChatId = useRef<string | null>(null);
+  const lastFetchedSource = useRef<string | null>(null);
+  const isInitialMount = useRef(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          const transformedMessages = data.map((item: MessageResponse) => ({
-            id: item.id?.toString() || Date.now().toString(),
-            content: item.message?.content || item.output || '',
-            role: (item.message?.type === 'human' ? 'user' : 'assistant') as 'user' | 'assistant',
-            timestamp: new Date().toISOString()
-          }));
-          setMessages(transformedMessages);
-        }
-      }
-    } catch (err) {
-      console.error('Error loading chat detail:', err);
-    }
-  };
+  // Get chat state from context
+  const { 
+    messages, 
+    setMessages: setMessagesContext, 
+    chats,
+    setChats,
+    activeChatTitle, 
+    setActiveChatTitle,
+    isDataFetched,
+    setIsDataFetched,
+    isAgentsFetched,
+    setIsAgentsFetched,
+    loadChatDetail,
+    findChat,
+    handleRenameChat
+  } = useChat();
 
-  const handleNewChat = async (agent: ExtendedAgent, userId: string, token: string) => {
-    try {
-      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/new', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId: userId,
-          agentId: agent.id,
-          chatName: agent.name
-        })
-      });
+  // Local state for messages
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
 
-      if (!response.ok) {
-        throw new Error('Failed to create new chat');
-      }
-
-      const data = await response.json();
-      return {
-        chatId: data.chatId,
-        createdAt: new Date().toISOString()
-      };
-    } catch (error) {
-      console.error('Error creating new chat:', error);
-      throw error;
-    }
-  };
-
-    const checkAuth = () => {
-      const auth = localStorage.getItem('auth');
-      if (!auth) {
-        router.push('/login');
-      return null;
-      }
-      try {
-        const authData = JSON.parse(auth);
-        if (!authData.token || !authData.user) {
-          localStorage.removeItem('auth');
-          router.push('/login');
-        return null;
-        }
-      return authData;
-      } catch (error) {
-        localStorage.removeItem('auth');
-        router.push('/login');
-      return null;
-    }
-  };
-
-  const transformApiResponse = (chatResponse: GetChatHistoryResponse[]): ChatHistoryResponse => {
-    const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    const today: ChatItem[] = [];
-    const previous_7_days: ChatItem[] = [];
-    const previous_30_days: ChatItem[] = [];
-
-    chatResponse.forEach(chat => {
-      const chatDate = new Date(chat.last_updated);
-      const chatItem = {
-        chat_id: chat.id,
-        title: chat.chat_name || 'Untitled Chat',
-        timestamp: chat.last_updated
-      };
-
-      if (chatDate >= oneDayAgo) {
-        today.push(chatItem);
-      } else if (chatDate >= sevenDaysAgo) {
-        previous_7_days.push(chatItem);
-      } else if (chatDate >= thirtyDaysAgo) {
-        previous_30_days.push(chatItem);
-      }
-    });
-
-    return {
-      today: today.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
-      previous_7_days: previous_7_days.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
-      previous_30_days: previous_30_days.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    };
-  };
-
-  const findChat = (chatId: string | null, chats: ChatHistoryResponse) => {
-    if (!chatId) return null;
-    return chats.today.find(c => c.chat_id === chatId) ||
-           chats.previous_7_days.find(c => c.chat_id === chatId) ||
-           chats.previous_30_days.find(c => c.chat_id === chatId);
-  };
-
-  const handleChatUpdate = async () => {
-    try {
-      const chatResponse = await getChatHistory();
-      const transformedResponse = transformApiResponse(chatResponse as GetChatHistoryResponse[]);
-      setChats(transformedResponse);
-      
-      if (chatId) {
-        const chat = findChat(chatId, transformedResponse);
-        if (chat) {
-          setActiveChatTitle(chat.title);
-        }
-      }
-    } catch (error) {
-      console.error('Error updating chat:', error);
-    }
-  };
-
+  // Update local messages when context messages change
   useEffect(() => {
-    // Listen for chat update events
-    window.addEventListener('chat-updated', handleChatUpdate);
-    
-    // Initial load
-    handleChatUpdate();
+    setLocalMessages(messages);
+  }, [messages]);
 
-    return () => {
-      window.removeEventListener('chat-updated', handleChatUpdate);
-    };
-  }, [chatId]);
-
+  // Effect untuk load chat detail ketika chatId berubah
   useEffect(() => {
-    if (chatId) {
-      const chat = findChat(chatId, chats);
-      if (chat) {
-        setActiveChatTitle(chat.title);
+    if (!chatId) {
+      // Jika tidak ada chatId (berarti di halaman agent), 
+      // dan ada agent yang dipilih, gunakan nama agent sebagai judul
+      if (selectedAgent) {
+        setActiveChatTitle(selectedAgent.name);
       }
-    } else if (selectedAgent) {
-      setActiveChatTitle(selectedAgent.name);
+      return;
     }
-  }, [chatId, chats, selectedAgent]);
+    if (selectedChat === chatId) return; // Prevent loop if chat is already selected
 
-  useEffect(() => {
-    const loadInitialData = async () => {
+    const fetchChatDetail = async () => {
       try {
         const authData = checkAuth();
         if (!authData) return;
 
-        // Load chat history first
-        const chatResponse = await getChatHistory();
-        const transformedResponse = transformApiResponse(chatResponse as GetChatHistoryResponse[]);
-        setChats(transformedResponse);
-        console.log('Chat history loaded:', transformedResponse); // Debug log
+        setIsLoading(true);
+        await loadChatDetail(authData.user.id, chatId);
+        setSelectedChat(chatId);
 
-        // Load chat messages if chatId is present
-        if (chatId) {
-          await loadChatDetail(authData.user.id, chatId);
-          const chat = findChat(chatId, transformedResponse);
-          console.log('Current chat:', chat); // Debug log
-          if (chat) {
-            setActiveChatTitle(chat.title);
-          }
-        }
-
-        // Load agent detail if agentId is present
-        if (agentId) {
-          try {
-            const chatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/new', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authData.token}`
-              },
-              body: JSON.stringify({
-                userId: authData.user.id,
-                agentId: agentId
-              })
-            });
-
-            if (!chatResponse.ok) {
-              throw new Error('Failed to get agent template');
-            }
-
-            const data = await chatResponse.json();
-            const agentData = Array.isArray(data) ? data[0] : data;
-            
-            setSelectedAgent({
-              id: agentData.id,
-              name: agentData.name,
-              description: agentData.description,
-              provider: agentData.provider,
-              rating: agentData.rating,
-              category: agentData.category,
-              conversation_count: agentData.conversation_count,
-              conversation_starters: agentData.conversation_starters,
-              icon_url: agentData.icon_url
-            });
-            setMessages([]); // Reset messages ketika agent baru dipilih
-
-            // Simpan chatId ke session storage
-            if (agentData.chatid) {
-              sessionStorage.setItem(`chat_${agentId}`, agentData.chatid);
-              setSelectedChat(agentData.chatid);
-            }
-
-            // Kirim starter message jika ada
-            if (starter) {
-              const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chatbot', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${authData.token}`
-                },
-                body: JSON.stringify({
-                  message: decodeURIComponent(starter),
-                  userId: authData.user.id,
-                  chatId: agentData.chatid,
-                  isAction: true,
-                  timestamp: new Date().toISOString()
-                })
-              });
-
-              if (response.ok) {
-                const data = await response.json();
-                const userMessage = {
-                  id: Date.now().toString(),
-                  content: decodeURIComponent(starter),
-                  role: 'user' as const,
-                  timestamp: new Date().toISOString()
-                };
-                const assistantMessage = {
-                  id: (Date.now() + 1).toString(),
-                  content: data[0].output,
-                  role: 'assistant' as const,
-                  timestamp: new Date().toISOString()
-                };
-                setMessages([userMessage, assistantMessage]);
-              }
-            }
-          } catch (error) {
-            console.error('Error loading agent template:', error);
-          }
+        // Set chat title dari chat history
+        const chat = findChat(chatId, chats);
+        if (chat) {
+          setActiveChatTitle(chat.title);
         }
       } catch (error) {
-        console.error('Error loading initial data:', error);
+        console.error('Error loading chat detail:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    const auth = checkAuth();
-    if (auth) {
-      loadInitialData();
-    }
-  }, [router, agentId, starter, chatId]);
+    fetchChatDetail();
+  }, [chatId, loadChatDetail, chats, setActiveChatTitle, findChat, selectedChat, selectedAgent]);
 
+  // Effect untuk update judul chat ketika chat di-rename
   useEffect(() => {
-    const loadAgents = async () => {
+    if (!selectedChat) return;
+    
+    const chat = findChat(selectedChat, chats);
+    if (chat) {
+      setActiveChatTitle(chat.title);
+    }
+  }, [chats, selectedChat, findChat, setActiveChatTitle]);
+
+  // Reset fetch flags when navigating away
+  useEffect(() => {
+    return () => {
+      if (pathname !== '/chat' && pathname !== '/explore') {
+        setIsDataFetched(false);
+        setIsAgentsFetched(false);
+        lastFetchedChatId.current = null;
+        lastFetchedSource.current = null;
+        isInitialMount.current = true;
+      }
+    };
+  }, [pathname, setIsDataFetched, setIsAgentsFetched]);
+
+  // Effect untuk load agent detail dan buat chat baru
+  useEffect(() => {
+    if (!agentId) return;
+    
+    const loadAgentDetail = async () => {
       try {
-        const response = await getFeaturedAgents(selectedTab.category_id);
-        setAgents(response);
+        const authData = checkAuth();
+        if (!authData) return;
+
+        setIsLoading(true);
+
+        const agentDetail = await getAgentDetail(agentId);
+        if (!agentDetail) {
+          throw new Error('Agent not found');
+        }
+
+        const newAgent = {
+          id: agentDetail.id,
+          name: agentDetail.name,
+          description: agentDetail.description,
+          provider: agentDetail.provider,
+          rating: agentDetail.rating,
+          category: agentDetail.category,
+          conversation_count: agentDetail.conversation_count,
+          conversation_starters: agentDetail.conversation_starters,
+          icon_url: agentDetail.icon_url,
+          webhook_url: agentDetail.webhook_url
+        };
+
+        setSelectedAgent(newAgent);
+        setActiveChatTitle(agentDetail.name);
+        setSelectedChat(null);
+        setMessagesContext([]);
+
       } catch (error) {
-        console.error('Error loading agents:', error);
+        console.error('Error loading agent detail:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadAgents();
-  }, [selectedTab]);
+    loadAgentDetail();
+  }, [agentId]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [localMessages]);
 
   const handleSendMessage = async (messageText?: string) => {
-    if ((!messageText && !inputMessage.trim()) || isSending) return;
-
-    const textToSend = messageText || inputMessage.trim();
-    setIsSending(true);
-    
     try {
-      const auth = localStorage.getItem('auth');
-      const authData = auth ? JSON.parse(auth) : null;
-      const userId = authData?.user?.id;
+      const authData = checkAuth();
+      if (!authData) return;
 
-      if (!userId || !authData?.token) {
-        throw new Error('User ID or token not found');
-      }
+      const message = messageText || inputMessage;
+      if (!message.trim() || !selectedAgent) return;
 
-      const timestamp = new Date().toISOString();
-
-      // Jika belum ada selectedChat atau chatId, buat chat baru
-      let currentChatId = selectedChat || chatId;
+      setInputMessage('');
       
+      // Tambahkan pesan user ke context
+      const userMessage = {
+        role: 'human',
+        content: message,
+        timestamp: new Date().toISOString()
+      };
+      setMessagesContext(prev => [...prev, userMessage]);
+      
+      // Gunakan chatId yang ada atau selectedChat yang sudah ada
+      let currentChatId = chatId || selectedChat;
+
+      // Buat chat baru hanya jika belum ada chatId sama sekali
       if (!currentChatId) {
-        // Jika tidak ada agent yang dipilih, gunakan agent default atau tampilkan pesan error
-        if (!selectedAgent && !agentId) {
-          throw new Error('Silakan pilih agent terlebih dahulu');
+        const newChatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/newid', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          },
+          body: JSON.stringify({
+            userId: authData.user.id,
+            agentId: selectedAgent.id,
+            chatName: selectedAgent.name,
+            agentName: selectedAgent.name
+          })
+        });
+
+        if (!newChatResponse.ok) {
+          throw new Error('Failed to create new chat');
         }
 
-        try {
-          // Dapatkan chatId baru dari webhook/chat/newid
-          const newChatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/newid', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authData.token}`
-            },
-            body: JSON.stringify({
-              userId: userId,
-              agentId: selectedAgent?.id || agentId,
-              agentName: selectedAgent?.name || 'Unknown Agent'
-            })
-          });
-
-          if (!newChatResponse.ok) {
-            throw new Error('Gagal membuat chat baru');
-          }
-
-          const newChatData = await newChatResponse.json();
-          currentChatId = newChatData.chatId;
-          setSelectedChat(currentChatId);
-
-          // Update URL dengan chatId baru
-          router.push(`/chat?chatId=${currentChatId}`, { scroll: false });
-        } catch (error) {
-          console.error('Error creating new chat:', error);
-          throw error;
-        }
+        const newChatData = await newChatResponse.json();
+        currentChatId = newChatData.chatId;
+        setSelectedChat(currentChatId);
+        setActiveChatTitle(selectedAgent.name);
       }
 
-      if (!currentChatId) {
-        throw new Error('Tidak dapat membuat chat baru');
-      }
-      
-      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chatbot', {
+      // Kirim pesan ke agent
+      const response = await fetch(selectedAgent.webhook_url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authData.token}`
         },
         body: JSON.stringify({
-          message: textToSend,
-          userId: userId,
+          userId: authData.user.id,
           chatId: currentChatId,
-          isAction: true,
-          timestamp: timestamp
+          message: message,
+          agentId: selectedAgent.id,
+          agentName: selectedAgent.name
         })
       });
 
       if (!response.ok) {
-        throw new Error('Gagal mengirim pesan');
+        throw new Error('Failed to send message');
       }
 
       const data = await response.json();
-      
-      // Refresh chat history sebelum update messages
-      await handleChatUpdate();
-      
-      const userMessage = {
-        id: Date.now().toString(),
-        content: textToSend,
-        role: 'user' as const,
-        timestamp: timestamp
-      };
-      
-      const assistantMessage = {
-        id: (Date.now() + 1).toString(),
+      const aiMessage = {
+        role: 'ai',
         content: data[0].output,
-        role: 'assistant' as const,
-        timestamp: timestamp
+        timestamp: new Date().toISOString()
       };
+      setMessagesContext(prev => [...prev, aiMessage]);
 
-      setMessages(prev => [...prev, userMessage, assistantMessage]);
-      setInputMessage('');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error sending message:', error);
-      // Tampilkan pesan error ke user
-      alert(error.message || 'Terjadi kesalahan saat mengirim pesan');
-    } finally {
-      setIsSending(false);
     }
   };
 
-  const handleRenameChat = async (chatId: string) => {
-    if (!newTitle.trim()) {
-      setIsRenaming(false);
-      return;
+  const handleConversationStarterClick = async (starter: string) => {
+    try {
+      const authData = checkAuth();
+      if (!authData || !selectedAgent) return;
+
+      setIsLoading(true);
+
+      // Gunakan chatId yang ada atau buat baru jika belum ada
+      let currentChatId = chatId || selectedChat;
+
+      if (!currentChatId) {
+        const newChatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/newid', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authData.token}`
+          },
+          body: JSON.stringify({
+            userId: authData.user.id,
+            agentId: selectedAgent.id,
+            chatName: selectedAgent.name,
+            agentName: selectedAgent.name
+          })
+        });
+
+        if (!newChatResponse.ok) {
+          throw new Error('Failed to create new chat');
+        }
+
+        const newChatData = await newChatResponse.json();
+        currentChatId = newChatData.chatId;
+        setSelectedChat(currentChatId);
+        setActiveChatTitle(selectedAgent.name);
+      }
+
+      // Kirim pesan ke agent
+      const response = await fetch(selectedAgent.webhook_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          userId: authData.user.id,
+          chatId: currentChatId,
+          message: starter,
+          agentId: selectedAgent.id,
+          agentName: selectedAgent.name
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const data = await response.json();
+      const messages = [
+        { 
+          role: 'human', 
+          content: starter,
+          timestamp: new Date().toISOString()
+        },
+        { 
+          role: 'ai', 
+          content: data[0].output,
+          timestamp: new Date().toISOString()
+        }
+      ];
+      setMessagesContext(messages);
+
+    } catch (error) {
+      console.error('Error handling conversation starter:', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleRenameCurrentChat = async () => {
+    if (!selectedChat || !newTitle.trim()) return;
 
     try {
-      await renameChat(chatId, newTitle.trim());
-      await handleChatUpdate();
+      await handleRenameChat(selectedChat, newTitle.trim());
       setIsRenaming(false);
       setNewTitle('');
     } catch (error) {
       console.error('Error renaming chat:', error);
-      setIsRenaming(false);
     }
   };
 
@@ -542,24 +469,40 @@ function ChatContent() {
 
   const handleDeleteChat = async (chatId: string) => {
     try {
-      const auth = checkAuth();
-      if (!auth) return;
+      const authData = checkAuth();
+      if (!authData) return;
 
-      await deleteChat(auth.user.id, chatId);
-      
-      // Refresh chat list
-      await handleChatUpdate();
-      
-      // If the deleted chat was active, redirect to home
+      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.token}`
+        },
+        body: JSON.stringify({
+          chatId: chatId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete chat');
+      }
+
       if (chatId === selectedChat) {
         router.push('/chat');
-        setMessages([]);
+        setMessagesContext([]);
         setSelectedChat(null);
         setActiveChatTitle('');
       }
+
+      // Trigger chat update to refresh the sidebar
+      // window.dispatchEvent(new Event('chat-updated'));
     } catch (error) {
       console.error('Error deleting chat:', error);
     }
+  };
+
+  const handleAgentClick = (agent: ExtendedAgent) => {
+    router.push(`/chat?agent=${agent.id}`);
   };
 
   if (isLoading) {
@@ -574,11 +517,14 @@ function ChatContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-white dark:bg-gray-900">
+    <div className="flex h-screen">
       {/* Sidebar */}
       <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
       
-      <main className={`flex-1 flex flex-col transition-all duration-200 ease-in-out ${isSidebarOpen ? 'ml-64' : 'ml-0'}`}>
+      <div className={clsx(
+        "flex flex-col flex-1 h-screen",
+        isSidebarOpen ? "md:pl-64" : ""
+      )}>
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-4 px-4 py-4">
@@ -596,8 +542,8 @@ function ChatContent() {
 
         {/* Chat Messages */}
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="max-w-3xl mx-auto space-y-4">
-            {messages.length === 0 ? (
+          <div className="max-w-3xl mx-auto">
+            {localMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center min-h-[60vh]">
                 {selectedAgent && (
                   <>
@@ -637,7 +583,7 @@ function ChatContent() {
                       {selectedAgent.conversation_starters.map((starter, index) => (
                         <button
                           key={index}
-                          onClick={() => handleSendMessage(starter)}
+                          onClick={() => handleConversationStarterClick(starter)}
                           className="text-left p-4 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-[20px] text-sm text-gray-600 dark:text-gray-400 transition-colors shadow-[0_0_0_1px_rgba(0,0,0,0.08)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:shadow-[0_0_0_1px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)]"
                         >
                           {starter}
@@ -648,51 +594,42 @@ function ChatContent() {
                 )}
               </div>
             ) : (
-              messages.map((message, index) => (
-                <div
-                  key={message.id}
-                  className={`${
-                    message.role === 'user' 
-                      ? 'flex w-full flex-col gap-1 empty:hidden items-end rtl:items-start'
-                      : 'flex items-start empty:hidden'
-                  }`}
-                >
+              <>
+                {localMessages.map((message, index) => (
                   <div
-                    className={`p-4 rounded-2xl text-sm ${
-                      message.role === 'user'
-                        ? 'bg-[hsl(262,80%,95%)] text-gray-700'
-                        : 'bg-white dark:bg-gray-800 flex-1'
-                    }`}
-                    style={message.role === 'user' ? { maxWidth: '75%' } : undefined}
+                    key={message.id || `message-${index}`}
+                    className={clsx(
+                      "flex items-start mb-6",
+                      message.role === 'ai' ? "justify-start" : "justify-end"
+                    )}
                   >
-                    <ReactMarkdown
-                      components={{
-                        code({ inline, className, children }) {
-                          const match = /language-(\w+)/.exec(className || '');
-                          return !inline && match ? (
-                            <SyntaxHighlighter
-                              style={tomorrow as any}
-                              language={match[1]}
-                              PreTag="div"
-                            >
-                              {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
-                          ) : (
-                            <code className={className}>
-                              {children}
-                            </code>
-                          );
-                        },
-                      }}
-                    >
+                    {message.role === 'ai' ? (
+                      <div className="w-full bg-white">
+                        <div className="text-[14px] text-gray-700 leading-relaxed py-3 px-8">
+                          <ReactMarkdown components={markdownComponents}>
+                            {message.content}
+                          </ReactMarkdown>
+                          <div className="text-[11px] mt-2 text-gray-400">
+                            {new Date(message.timestamp).toLocaleTimeString()}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-[#f9f6fe] px-4 py-3 rounded-lg max-w-[70%]">
+                        <div className="text-[14px] text-gray-700 leading-relaxed">
+                          <ReactMarkdown components={markdownComponents}>
                       {message.content}
                     </ReactMarkdown>
                   </div>
-                  {message.role === 'user' && (
-                    <div className="w-8 h-8" />
+                        <div className="text-[11px] mt-2 text-gray-500">
+                          {new Date(message.timestamp).toLocaleTimeString()}
+                        </div>
+                      </div>
                   )}
                 </div>
-              ))
+                ))}
+                <div ref={messagesEndRef} />
+              </>
             )}
 
             {isSending && (
@@ -710,7 +647,9 @@ function ChatContent() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                if (inputMessage.trim()) {
                 handleSendMessage();
+                }
               }}
               className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden"
             >
@@ -727,7 +666,7 @@ function ChatContent() {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                   placeholder="Ketik pesan..."
-                  className="flex-1 px-4 py-2 bg-transparent focus:outline-none text-gray-700 dark:text-gray-300"
+                className="flex-1 px-4 py-2 bg-transparent focus:outline-none text-[14px] text-gray-700 dark:text-gray-300"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -775,7 +714,7 @@ function ChatContent() {
             </p>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 } 

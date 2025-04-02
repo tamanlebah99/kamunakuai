@@ -19,6 +19,7 @@ export interface Agent {
   description: string;
   provider: string;
   icon_url: string;
+  webhook_url: string;
 }
 
 export interface ChatItem {
@@ -43,6 +44,7 @@ export interface AgentDetail {
   category: string;
   conversation_count: number;
   conversation_starters: string[];
+  webhook_url: string;
 }
 
 export async function getTabs(): Promise<Tab[]> {

@@ -4,7 +4,7 @@ import { getAuthToken } from '@/lib/utils/auth';
 export interface Message {
   id: string;
   content: string;
-  role: 'user' | 'assistant';
+  role: 'human' | 'ai';
   timestamp: string;
 }
 
@@ -20,7 +20,7 @@ export interface ChatHistory {
 export interface ChatMessage {
   id: string;
   content: string;
-  role: 'user' | 'assistant';
+  role: 'human' | 'ai';
   timestamp: string;
 }
 

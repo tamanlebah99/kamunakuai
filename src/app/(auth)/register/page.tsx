@@ -4,6 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -19,11 +21,30 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      // TODO: Implementasi registrasi
-      console.log('Register dengan:', formData);
-      router.push('/chat');
+      const response = await fetch(`${API_BASE_URL}/webhook/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.isValid) {
+        // Registrasi berhasil
+        router.push('/login?registered=true');
+      } else {
+        // Registrasi gagal dengan pesan error
+        alert(data.message || 'Registrasi gagal. Silakan coba lagi.');
+      }
     } catch (error) {
       console.error('Error:', error);
+      alert('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +148,7 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#4c1d95] hover:bg-[#3b1672] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4c1d95] disabled:bg-[#6b4a9b] disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Memuat...' : 'Daftar'}
               </button>
@@ -151,7 +172,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="mt-6 grid grid-cols-1 gap-3">
               <button className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700">
                 <span className="sr-only">Sign up with Google</span>
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -170,17 +191,6 @@ export default function RegisterPage() {
                   <path
                     fill="currentColor"
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-              </button>
-
-              <button className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700">
-                <span className="sr-only">Sign up with Facebook</span>
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path
-                    fillRule="evenodd"
-                    d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"
-                    clipRule="evenodd"
                   />
                 </svg>
               </button>

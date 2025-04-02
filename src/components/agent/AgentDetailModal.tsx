@@ -69,7 +69,7 @@ export function AgentDetailModal({ agent, onClose, onStartChat }: AgentDetailMod
       const chatId = data.chatId;
 
       // Kirim pesan starter
-      const chatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chatbot', {
+      const chatResponse = await fetch(agentDetail?.webhook_url || 'https://coachbot-n8n-01.fly.dev/webhook/chatbot', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -87,6 +87,9 @@ export function AgentDetailModal({ agent, onClose, onStartChat }: AgentDetailMod
       if (!chatResponse.ok) {
         throw new Error('Failed to send message');
       }
+
+      // Trigger chat-updated event untuk memperbarui sidebar
+      window.dispatchEvent(new Event('chat-updated'));
 
       // Tutup modal dan arahkan ke halaman chat
       onClose();

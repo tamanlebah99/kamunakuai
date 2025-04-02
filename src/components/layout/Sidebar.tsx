@@ -5,13 +5,25 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Menu, Search, Plus, User, ChevronDown, LogOut, Settings, Crown, MessageSquare, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { getRecentAgents } from '@/lib/api/explore';
-import { getChatHistory as getChatHistoryApi, renameChat, deleteChat } from '@/lib/api/chat';
-import { getChatHistory as getChatHistorySidebar } from '@/lib/api/explore';
+import { renameChat, deleteChat } from '@/lib/api/chat';
 import type { Agent, ChatHistory } from '@/lib/api/explore';
+import { useSidebar } from '@/contexts/SidebarContext';
+import { useChat } from '@/contexts/ChatContext';
+import clsx from 'clsx';
+import { checkAuth } from '@/lib/auth';
 
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
+}
+
+interface ChatItemProps {
+  chat: {
+    chat_id: string;
+    title: string;
+  };
+  isActive: boolean;
+  onSelect: (chat: { chat_id: string; title: string }) => void;
 }
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
@@ -19,35 +31,23 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const searchParams = useSearchParams();
   const activeChatId = searchParams.get('chatId');
   const [searchQuery, setSearchQuery] = useState('');
-  const [recentAgents, setRecentAgents] = useState<Agent[]>([]);
-  const [chatHistory, setChatHistory] = useState<ChatHistory>({
-    today: [],
-    previous_7_days: [],
-    previous_30_days: []
-  });
+  const { recentAgents, chatHistory, loadChatHistory } = useSidebar();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [username, setUsername] = useState<string>('');
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [newChatName, setNewChatName] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
+  const { handleRenameChat } = useChat();
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [agents, history] = await Promise.all([
-          getRecentAgents(),
-          getChatHistorySidebar()
-        ]);
-        setRecentAgents(agents);
-        setChatHistory(history);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      }
-    };
+    // Listen for chat-updated event untuk refresh chat history saja
+    window.addEventListener('chat-updated', loadChatHistory);
 
-    loadData();
-  }, []);
+    return () => {
+      window.removeEventListener('chat-updated', loadChatHistory);
+    };
+  }, []); // Hanya dijalankan sekali saat mount
 
   useEffect(() => {
     // Get username from localStorage
@@ -80,43 +80,14 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   const handleLogout = async () => {
     try {
-      // Hapus token dari localStorage
       localStorage.removeItem('auth');
-
-      // Hapus cookie Google jika ada
       document.cookie = 'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
-      // Tunggu sebentar sebelum redirect untuk memastikan cleanup selesai
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Redirect ke halaman login
       router.push('/login');
       router.refresh();
     } catch (error) {
       console.error('Error during logout:', error);
-      // Tetap redirect ke login jika terjadi error
       router.push('/login');
-    }
-  };
-
-  const loadChatHistory = async () => {
-    try {
-      const history = await getChatHistorySidebar();
-      setChatHistory(history);
-    } catch (error) {
-      console.error('Error loading chat history:', error);
-    }
-  };
-
-  const handleRenameChat = async (chatId: string, newName: string) => {
-    try {
-      await renameChat(chatId, newName);
-      await loadChatHistory();
-      setEditingChatId(null);
-      setNewChatName('');
-      window.dispatchEvent(new Event('chat-updated'));
-    } catch (error) {
-      console.error('Error renaming chat:', error);
     }
   };
 
@@ -128,20 +99,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       const authData = JSON.parse(auth);
       await deleteChat(authData.user.id, chatId);
       
-      // Load fresh data
-      const [agents, history] = await Promise.all([
-        getRecentAgents(),
-        getChatHistorySidebar()
-      ]);
-      setRecentAgents(agents);
-      setChatHistory(history);
-      
-      // If the deleted chat was active, redirect to home
       if (activeChatId === chatId) {
         router.push('/chat');
       }
 
-      // Trigger chat-updated event for other components
       window.dispatchEvent(new Event('chat-updated'));
     } catch (error) {
       console.error('Error deleting chat:', error);
@@ -155,76 +116,114 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     }
   }, [editingChatId]);
 
-  const renderChatButton = (chat: any) => (
-    <div key={chat.chat_id} className="relative group">
-      <div
-        onClick={() => router.push(`/chat?chatId=${chat.chat_id}`, { scroll: false })}
-        className={`w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg cursor-pointer ${
-          activeChatId === chat.chat_id.toString() ? 'bg-[hsl(262,80%,95%)] dark:bg-[hsl(262,80%,15%)]' : ''
-        }`}
-      >
-        <MessageSquare size={16} />
-        {editingChatId === chat.chat_id.toString() ? (
-          <form 
-            className="flex-1"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleRenameChat(chat.chat_id.toString(), newChatName);
-            }}
+  const handleChatSelect = (chat: { chat_id: string; title: string }) => {
+    router.push(`/chat?chatId=${chat.chat_id}`);
+  };
+
+  const handleAgentClick = (agent: Agent) => {
+    router.push(`/chat?agent=${agent.id}`);
+  };
+
+  const ChatItem = ({ chat, isActive, onSelect }: ChatItemProps) => {
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [newTitle, setNewTitle] = useState('');
+
+    const handleRename = async () => {
+      if (!newTitle.trim()) return;
+      try {
+        await handleRenameChat(chat.chat_id, newTitle);
+        setIsRenaming(false);
+        setNewTitle('');
+        setShowDropdown(false);
+        window.dispatchEvent(new Event('chat-updated'));
+      } catch (error) {
+        console.error('Error renaming chat:', error);
+      }
+    };
+
+    const handleDelete = async () => {
+      try {
+        await handleDeleteChat(chat.chat_id);
+        setShowDropdown(false);
+      } catch (error) {
+        console.error('Error deleting chat:', error);
+      }
+    };
+
+    return (
+      <div className="relative group">
+        <div 
+          className={clsx(
+            "flex items-center justify-between px-2 py-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800",
+            isActive && "bg-gray-100 dark:bg-gray-800"
+          )}
+        >
+          <div 
+            className="flex-1 mr-2" 
+            onClick={() => onSelect(chat)}
           >
-            <input
-              ref={editInputRef}
-              type="text"
-              value={newChatName}
-              onChange={(e) => setNewChatName(e.target.value)}
-              className="w-full bg-white dark:bg-gray-900 text-sm rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[hsl(262,80%,75%)]"
-              onBlur={() => {
-                if (newChatName.trim()) {
-                  handleRenameChat(chat.chat_id.toString(), newChatName);
-                } else {
-                  setEditingChatId(null);
-                  setNewChatName('');
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  setEditingChatId(null);
-                  setNewChatName('');
-                }
-              }}
-            />
-          </form>
-        ) : (
-          <>
-            <span className="truncate flex-1">{chat.title}</span>
-            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingChatId(chat.chat_id.toString());
-                  setNewChatName(chat.title);
-                }}
-                className="p-1 hover:bg-[hsl(262,80%,90%)] dark:hover:bg-[hsl(262,80%,20%)] rounded"
-              >
-                <Edit2 size={14} className="text-gray-500" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.confirm('Apakah Anda yakin ingin menghapus chat ini?')) {
-                    handleDeleteChat(chat.chat_id.toString());
+            {isRenaming ? (
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleRename();
+                  } else if (e.key === 'Escape') {
+                    setIsRenaming(false);
+                    setNewTitle('');
                   }
                 }}
-                className="p-1 hover:bg-[hsl(262,80%,90%)] dark:hover:bg-[hsl(262,80%,20%)] rounded"
+                onBlur={() => {
+                  setIsRenaming(false);
+                  setNewTitle('');
+                }}
+                className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                autoFocus
+              />
+            ) : (
+              <span className="text-sm text-gray-700 dark:text-gray-300 break-words">
+                {chat.title}
+              </span>
+            )}
+          </div>
+          
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <MoreVertical size={16} className="text-gray-500" />
+          </button>
+        </div>
+
+        {/* Dropdown Menu */}
+        {showDropdown && (
+          <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+            <div className="py-1">
+              <button
+                onClick={() => {
+                  setIsRenaming(true);
+                  setNewTitle(chat.title);
+                  setShowDropdown(false);
+                }}
+                className="w-full px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                <Trash2 size={14} className="text-red-500" />
+                Rename
+              </button>
+              <button
+                onClick={handleDelete}
+                className="w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Delete
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -284,7 +283,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               {recentAgents.map((agent) => (
                 <button
                   key={agent.id}
-                  onClick={() => router.push(`/chat?agent=${agent.id}`, { scroll: false })}
+                  onClick={() => handleAgentClick(agent)}
                   className="w-full flex items-center gap-3 px-2 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
                 >
                   <img src={agent.icon_url} alt={agent.name} className="w-6 h-6 rounded-full" />
@@ -296,31 +295,52 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
           {/* RIWAYAT CHAT */}
           <div className="px-4 pb-4">
-            <h2 className="px-2 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500">
+            <h2 className="px-2 py-2 text-xs font-semibold text-gray-400 dark:text-gray-500 break-words">
               RIWAYAT CHAT
             </h2>
             <div className="mt-2 space-y-1">
               {/* Today */}
-              {chatHistory.today.length > 0 && (
+              {chatHistory?.today?.length > 0 && (
                 <div className="mb-4">
                   <h4 className="px-2 text-xs text-gray-500 dark:text-gray-400 mb-1">Hari Ini</h4>
-                  {chatHistory.today.map(renderChatButton)}
+                  {chatHistory.today.map(chat => (
+                    <ChatItem 
+                      key={chat.chat_id} 
+                      chat={{ chat_id: chat.chat_id.toString(), title: chat.title }}
+                      isActive={activeChatId === chat.chat_id.toString()} 
+                      onSelect={handleChatSelect} 
+                    />
+                  ))}
                 </div>
               )}
 
               {/* Previous 7 days */}
-              {chatHistory.previous_7_days.length > 0 && (
+              {chatHistory?.previous_7_days?.length > 0 && (
                 <div className="mb-4">
                   <h4 className="px-2 text-xs text-gray-500 dark:text-gray-400 mb-1">7 Hari Terakhir</h4>
-                  {chatHistory.previous_7_days.map(renderChatButton)}
+                  {chatHistory.previous_7_days.map(chat => (
+                    <ChatItem 
+                      key={chat.chat_id} 
+                      chat={{ chat_id: chat.chat_id.toString(), title: chat.title }}
+                      isActive={activeChatId === chat.chat_id.toString()} 
+                      onSelect={handleChatSelect} 
+                    />
+                  ))}
                 </div>
               )}
 
               {/* Previous 30 days */}
-              {chatHistory.previous_30_days.length > 0 && (
+              {chatHistory?.previous_30_days?.length > 0 && (
                 <div>
                   <h4 className="px-2 text-xs text-gray-500 dark:text-gray-400 mb-1">30 Hari Terakhir</h4>
-                  {chatHistory.previous_30_days.map(renderChatButton)}
+                  {chatHistory.previous_30_days.map(chat => (
+                    <ChatItem 
+                      key={chat.chat_id} 
+                      chat={{ chat_id: chat.chat_id.toString(), title: chat.title }}
+                      isActive={activeChatId === chat.chat_id.toString()} 
+                      onSelect={handleChatSelect} 
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -334,7 +354,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="w-full flex items-center gap-3 px-4 py-2 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
             >
-              <div className="w-8 h-8 rounded-full bg-[hsl(262,80%,75%)] flex items-center justify-center text-white">
+              <div className="w-8 h-8 rounded-full bg-[#4c1d95] flex items-center justify-center text-white">
                 {username ? username[0].toUpperCase() : 'U'}
               </div>
               <div className="flex-1 text-left">

@@ -1,94 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Tab, Agent, getTabs, getFeaturedAgents } from '@/lib/api/explore';
 import { Search, Menu } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { AgentDetailModal } from '@/components/agent/AgentDetailModal';
 import { AgentCard } from '@/components/agent/AgentCard';
+import { useExplore } from '@/contexts/ExploreContext';
+import type { Agent } from '@/lib/api/explore';
 
 export default function ExplorePage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [tabs, setTabs] = useState<Tab[]>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [selectedTab, setSelectedTab] = useState<Tab>({ category_id: 1, category_name: 'Pengembangan Diri', sequence: 1 });
+  const { tabs, agents, selectedTab, setSelectedTab } = useExplore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-
-  useEffect(() => {
-    const checkAuth = () => {
-      const auth = localStorage.getItem('auth');
-      if (!auth) {
-        router.push('/login');
-        return false;
-      }
-      try {
-        const authData = JSON.parse(auth);
-        if (!authData.token || !authData.user) {
-          localStorage.removeItem('auth');
-          router.push('/login');
-          return false;
-        }
-        return true;
-      } catch (error) {
-        localStorage.removeItem('auth');
-        router.push('/login');
-        return false;
-      }
-    };
-
-    const loadInitialData = async () => {
-      try {
-        const [tabsResponse, agentsResponse] = await Promise.all([
-          getTabs(),
-          getFeaturedAgents(1), // Default category_id: 1 (Pengembangan Diri)
-        ]);
-        setTabs(tabsResponse);
-        if (tabsResponse.length > 0) {
-          setSelectedTab(tabsResponse[0]);
-        }
-        setAgents(agentsResponse);
-      } catch (error) {
-        console.error('Error loading initial data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (checkAuth()) {
-      loadInitialData();
-    }
-  }, [router]);
-
-  useEffect(() => {
-    const loadAgents = async () => {
-      try {
-        setIsLoading(true);
-        const response = await getFeaturedAgents(selectedTab.category_id);
-        setAgents(response);
-      } catch (error) {
-        console.error('Error loading agents:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadAgents();
-  }, [selectedTab]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-          <p className="text-gray-600 dark:text-gray-400">Memuat...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 flex">
