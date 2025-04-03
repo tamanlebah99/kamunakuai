@@ -13,7 +13,7 @@ function ExplorePage() {
   const router = useRouter();
   const { tabs, agents, selectedTab, setSelectedTab } = useExplore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
 
   return (

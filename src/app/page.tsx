@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Link from 'next/link';
 import { Send, User, Heart } from 'lucide-react';
@@ -16,6 +16,15 @@ export default function Home() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [chatId] = useState(() => uuidv4());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const categories = [
     {
@@ -50,13 +59,12 @@ export default function Home() {
     }
   ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
 
     const userMessage = {
       id: uuidv4(),
-      content: input.trim(),
+      content: text.trim(),
       role: 'user' as const
     };
 
@@ -71,7 +79,7 @@ export default function Home() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: input.trim(),
+          message: text.trim(),
           chatId: chatId
         })
       });
@@ -93,6 +101,36 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (input.trim()) {
+      await handleSendMessage(input);
+    }
+  };
+
+  const handleCategoryClick = async (category: { name: string; description: string }) => {
+    let message = '';
+    
+    switch (category.name) {
+      case 'Pengembangan Diri':
+        message = 'Saya tertarik dengan kategori Pengembangan Diri. Dapatkah kamu menjelaskan fitur apa yang kamu miliki terkait pengembangan diri?';
+        break;
+      case 'Spiritual':
+        message = 'Saya tertarik dengan kategori Spiritual. Bisakah kamu jelaskan fitur-fitur yang tersedia untuk membantu saya dalam hal spiritual?';
+        break;
+      case 'Traveling':
+        message = 'Saya tertarik dengan kategori Traveling. Bisa tolong jelaskan fitur apa saja yang bisa membantu saya menemukan tempat-tempat menarik di Bogor?';
+        break;
+      case 'Hobi':
+        message = 'Saya tertarik dengan kategori Hobi. Dapatkah kamu menjelaskan fitur-fitur yang tersedia untuk mengembangkan hobi saya?';
+        break;
+      default:
+        message = 'Saya tertarik dengan kategori Lainnya. Bisa tolong jelaskan fitur-fitur unik apa saja yang tersedia?';
+    }
+
+    await handleSendMessage(message);
   };
 
   return (
@@ -122,40 +160,17 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full p-4">
-        <div className="flex-1 flex flex-col items-center justify-center gap-8 mb-8">
-          <div className="text-center space-y-4">
-            <h1 className="text-2xl md:text-4xl font-bold text-gray-900">Apa yang bisa saya bantu?</h1>
-          </div>
-          
-          {/* Input Form - Centered */}
-          <div className="w-full max-w-2xl">
-            <form onSubmit={handleSubmit} className="relative flex items-center gap-2 bg-white rounded-full shadow-lg border border-gray-100 px-6 py-3">
-              <User className="w-6 h-6 text-gray-400" />
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ketik pesan..."
-                className="flex-1 px-2 bg-transparent border-0 focus:outline-none text-gray-600 placeholder:text-gray-400"
-                disabled={isLoading}
-              />
-              <button
-                type="submit"
-                disabled={!input.trim() || isLoading}
-                className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
-              >
-                <Send className="w-6 h-6" />
-              </button>
-            </form>
-          </div>
+      <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full p-4 relative">
+        <div className="text-center mb-4">
+          <h1 className="text-2xl md:text-4xl font-bold text-gray-900">Apa yang bisa saya bantu?</h1>
         </div>
 
         {/* Category Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {categories.map((category) => (
             <div
               key={category.id}
+              onClick={() => handleCategoryClick(category)}
               className="p-6 rounded-lg border border-gray-200 hover:border-[#4C1D95] transition-colors duration-200 cursor-pointer bg-white"
             >
               <div className="flex items-start gap-4">
@@ -175,6 +190,69 @@ export default function Home() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto mb-24">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex items-start mb-6 ${
+                message.role === 'user' ? 'justify-end' : 'justify-start'
+              }`}
+            >
+              {message.role === 'assistant' ? (
+                <div className="w-full bg-white">
+                  <div className="text-[14px] text-gray-700 leading-relaxed py-3 px-8">
+                    {message.content}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[#f9f6fe] px-4 py-3 rounded-lg max-w-[70%]">
+                  <div className="text-[14px] text-gray-700 leading-relaxed">
+                    {message.content}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 text-gray-500">
+              <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce"></div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Form - Bottom Dock */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100">
+          <div className="max-w-5xl mx-auto p-4">
+            <form onSubmit={handleSubmit} className="flex flex-col bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div className="flex items-center gap-2 p-2">
+                <User className="w-6 h-6 text-gray-400" />
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ketik pesan..."
+                  className="flex-1 px-4 py-2 bg-transparent focus:outline-none text-[14px] text-gray-700"
+                  disabled={isLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isLoading}
+                  className="p-2 bg-black hover:bg-gray-900 rounded-full"
+                >
+                  <Send className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            </form>
+            <p className="text-xs text-gray-500 text-center mt-2">
+              Kamunaku AI dapat membuat kesalahan. Periksa informasi penting.
+            </p>
+          </div>
         </div>
       </main>
 

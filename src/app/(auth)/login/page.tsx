@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { loginWithGoogle } from '@/lib/api/auth';
-import { GoogleLogin } from '@react-oauth/google';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Heart } from 'lucide-react';
 
@@ -50,8 +50,12 @@ export default function LoginPage() {
     };
   }, []);
 
-  const handleGoogleSuccess = async (credentialResponse: { credential: string }) => {
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     try {
+      if (!credentialResponse.credential) {
+        throw new Error('Credential tidak valid');
+      }
+      
       console.log('Google credential:', credentialResponse);
       
       // Login ke backend dengan ID token
@@ -109,37 +113,35 @@ export default function LoginPage() {
           <div className="mt-6 text-center">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
+                <div className="w-full border-t border-gray-200"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white dark:bg-gray-900 px-2 text-gray-500 dark:text-gray-400">
+                <span className="bg-white px-2 text-gray-900">
                   Atau lanjutkan dengan
                 </span>
               </div>
             </div>
 
             <div className="mt-6">
-              <div className="w-full flex justify-center">
-                <div className="w-full">
-                  {isGoogleReady && (
-                    <div className="rounded-lg overflow-hidden">
-                      <GoogleLogin
-                        onSuccess={handleGoogleSuccess}
-                        onError={() => {
-                          console.error('Login Failed');
-                        }}
-                        useOneTap={false}
-                        type="standard"
-                        theme="outline"
-                        size="large"
-                        width="100%"
-                        text="continue_with"
-                        shape="rectangular"
-                        locale="id_ID"
-                      />
-                    </div>
-                  )}
-                </div>
+              <div className="w-full">
+                {isGoogleReady && (
+                  <div className="w-full rounded-lg overflow-hidden">
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={() => {
+                        console.error('Login Failed');
+                      }}
+                      useOneTap={false}
+                      type="standard"
+                      theme="outline"
+                      size="large"
+                      width="100%"
+                      text="continue_with"
+                      shape="rectangular"
+                      locale="id_ID"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
