@@ -45,9 +45,6 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadAgents = async () => {
       try {
-        // Skip jika masih di tab default (sudah di-load di initial data)
-        if (selectedTab.category_id === 1) return;
-        
         const response = await getFeaturedAgents(selectedTab.category_id);
         setAgents(response);
       } catch (error) {

@@ -658,7 +658,7 @@ export default function ChatPage() {
               </button>
             </form>
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4">
-              Kamunaku AI dapat membuat kesalahan. Periksa informasi penting.
+              Kamunaku AI bisa salah. Periksa info penting.
             </p>
           </div>
         </div>

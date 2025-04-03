@@ -47,6 +47,19 @@ export interface AgentDetail {
   webhook_url: string;
 }
 
+export interface ExtendedAgent extends Omit<Agent, 'id'> {
+  id: string;
+  category: string;
+  conversation_count: number;
+  conversation_starters: string[];
+  rating: string;
+  provider: string;
+  description: string;
+  icon_url: string;
+  name: string;
+  webhook_url: string;
+}
+
 export async function getTabs(): Promise<Tab[]> {
   try {
     const authData = getAuthData();

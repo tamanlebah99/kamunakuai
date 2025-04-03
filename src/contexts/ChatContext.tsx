@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import type { Message } from '@/lib/api/chat';
-import type { ChatHistory, ChatItem } from '@/lib/api/explore';
+import type { ChatHistory, ChatItem, ExtendedAgent } from '@/lib/api/explore';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { API_BASE_URL } from '@/config/api';
 
@@ -20,6 +20,10 @@ interface ChatContextType {
   setIsAgentsFetched: (value: boolean) => void;
   findChat: (chatId: string | null, chats: ChatHistory) => ChatItem | null;
   handleRenameChat: (chatId: string, newTitle: string) => Promise<void>;
+  selectedAgent: ExtendedAgent | null;
+  setSelectedAgent: (agent: ExtendedAgent | null) => void;
+  selectedChat: string | null;
+  setSelectedChat: (chatId: string | null) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -34,6 +38,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [activeChatTitle, setActiveChatTitle] = useState('');
   const [isDataFetched, setIsDataFetched] = useState(false);
   const [isAgentsFetched, setIsAgentsFetched] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<ExtendedAgent | null>(null);
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const { chatHistory } = useSidebar();
 
   // Update chats whenever chatHistory changes
@@ -58,7 +64,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const loadChatDetail = async (userId: string, chatId: string) => {
     try {
-      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat', {
+      // Ambil webhook_url dari detail chat
+      const detailResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/detail', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,20 +77,36 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Chat detail response:', data);
-        if (Array.isArray(data) && data.length > 0) {
-          const transformedMessages = data.map((item: any) => {
-            console.log('Processing message item:', item);
-            return {
-              id: item.id?.toString() || Date.now().toString(),
-              content: item.message?.content || item.output || '',
-              role: item.message?.type === 'human' ? 'human' as const : 'ai' as const,
-              timestamp: new Date().toISOString()
-            };
-          });
-          console.log('Transformed messages:', transformedMessages);
+      if (!detailResponse.ok) {
+        throw new Error('Failed to get chat detail');
+      }
+
+      const detailData = await detailResponse.json();
+      const webhook_url = detailData[0]?.webhook_url;
+
+      // Ambil riwayat chat
+      const chatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth') ? JSON.parse(localStorage.getItem('auth')!).token : ''}`
+        },
+        body: JSON.stringify({
+          userId: userId,
+          chatId: chatId
+        })
+      });
+
+      if (chatResponse.ok) {
+        const chatData = await chatResponse.json();
+        if (Array.isArray(chatData) && chatData.length > 0) {
+          const transformedMessages = chatData.map((item: any) => ({
+            id: item.id.toString(),
+            content: item.message.content,
+            role: item.message.type === 'human' ? ('human' as const) : ('ai' as const),
+            timestamp: new Date().toISOString(),
+            webhook_url: webhook_url // Tambahkan webhook_url ke setiap pesan
+          }));
           setMessages(transformedMessages);
         }
       }
@@ -174,7 +197,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       isAgentsFetched,
       setIsAgentsFetched,
       findChat,
-      handleRenameChat
+      handleRenameChat,
+      selectedAgent,
+      setSelectedAgent,
+      selectedChat,
+      setSelectedChat
     }}>
       {children}
     </ChatContext.Provider>

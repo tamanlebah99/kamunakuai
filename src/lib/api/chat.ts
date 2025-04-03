@@ -6,6 +6,7 @@ export interface Message {
   content: string;
   role: 'human' | 'ai';
   timestamp: string;
+  webhook_url?: string;
 }
 
 export interface ChatHistory {

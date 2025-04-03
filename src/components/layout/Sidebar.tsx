@@ -117,7 +117,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   }, [editingChatId]);
 
   const handleChatSelect = (chat: { chat_id: string; title: string }) => {
-    router.push(`/chat?chatId=${chat.chat_id}`);
+    router.replace(`/chat?chatId=${chat.chat_id}`, { scroll: false });
   };
 
   const handleAgentClick = (agent: Agent) => {

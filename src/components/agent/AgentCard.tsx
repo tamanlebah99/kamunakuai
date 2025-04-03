@@ -14,7 +14,7 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
       <img
         src={agent.icon_url}
         alt={agent.name}
-        className="w-12 h-12 rounded-full object-cover"
+        className="w-12 h-12 object-contain bg-white"
       />
       <div className="flex-1 min-w-0">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">

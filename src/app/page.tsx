@@ -19,15 +19,14 @@ const markdownComponents = {
   strong: ({ children }: { children: React.ReactNode }) => <strong className="font-bold">{children}</strong>,
   em: ({ children }: { children: React.ReactNode }) => <em className="italic">{children}</em>,
   ul: ({ children }: { children: React.ReactNode }) => (
-    <ul className="list-none space-y-1 my-4">
+    <ul className="list-disc pl-6 space-y-2 my-4">
       {children}
     </ul>
   ),
   ol: ({ children }: { children: React.ReactNode }) => <ol className="list-decimal pl-6 mb-2">{children}</ol>,
   li: ({ children }: { children: React.ReactNode }) => (
-    <li className="flex items-start">
-      <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-500 mt-2 mr-2"></span>
-      <span>{children}</span>
+    <li className="pl-2">
+      {children}
     </li>
   ),
   code: ({ inline, className, children }: { inline?: boolean; className?: string; children: React.ReactNode }) => {
@@ -242,7 +241,7 @@ export default function Home() {
               {message.role === 'assistant' ? (
                 <div className="w-full bg-white">
                   <div className="text-[14px] text-gray-700 leading-relaxed py-3 px-8">
-                    <div className="prose prose-sm prose-gray max-w-none prose-ul:list-none prose-ul:pl-0 prose-li:pl-4 prose-li:relative before:content-['•'] before:absolute before:left-0 before:text-gray-500">
+                    <div className="prose prose-sm prose-gray max-w-none chat-message">
                       <ReactMarkdown>
                         {message.content}
                       </ReactMarkdown>
@@ -252,7 +251,7 @@ export default function Home() {
               ) : (
                 <div className="bg-[#f9f6fe] px-4 py-3 rounded-lg max-w-[70%]">
                   <div className="text-[14px] text-gray-700 leading-relaxed">
-                    <div className="prose prose-sm prose-gray max-w-none prose-ul:list-none prose-ul:pl-0 prose-li:pl-4 prose-li:relative before:content-['•'] before:absolute before:left-0 before:text-gray-500">
+                    <div className="prose prose-sm prose-gray max-w-none chat-message">
                       <ReactMarkdown>
                         {message.content}
                       </ReactMarkdown>
@@ -296,7 +295,7 @@ export default function Home() {
               </div>
             </form>
             <p className="text-xs text-gray-500 text-center mt-2">
-              Kamunaku AI dapat membuat kesalahan. Periksa informasi penting.
+              Kamunaku AI bisa salah. Periksa info penting.
             </p>
           </div>
         </div>
