@@ -4,12 +4,50 @@ import { useState, useRef, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Link from 'next/link';
 import { Send, User, Heart } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant';
 }
+
+const markdownComponents = {
+  p: ({ children }: { children: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
+  strong: ({ children }: { children: React.ReactNode }) => <strong className="font-bold">{children}</strong>,
+  em: ({ children }: { children: React.ReactNode }) => <em className="italic">{children}</em>,
+  ul: ({ children }: { children: React.ReactNode }) => (
+    <ul className="list-none space-y-1 my-4">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }: { children: React.ReactNode }) => <ol className="list-decimal pl-6 mb-2">{children}</ol>,
+  li: ({ children }: { children: React.ReactNode }) => (
+    <li className="flex items-start">
+      <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-500 mt-2 mr-2"></span>
+      <span>{children}</span>
+    </li>
+  ),
+  code: ({ inline, className, children }: { inline?: boolean; className?: string; children: React.ReactNode }) => {
+    const match = /language-(\w+)/.exec(className || '');
+    return !inline && match ? (
+      <SyntaxHighlighter
+        style={tomorrow}
+        language={match[1]}
+        PreTag="div"
+        className="rounded-md my-2"
+      >
+        {String(children).replace(/\n$/, '')}
+      </SyntaxHighlighter>
+    ) : (
+      <code className="bg-gray-100 rounded px-1">
+        {children}
+      </code>
+    );
+  }
+};
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -204,13 +242,21 @@ export default function Home() {
               {message.role === 'assistant' ? (
                 <div className="w-full bg-white">
                   <div className="text-[14px] text-gray-700 leading-relaxed py-3 px-8">
-                    {message.content}
+                    <div className="prose prose-sm prose-gray max-w-none prose-ul:list-none prose-ul:pl-0 prose-li:pl-4 prose-li:relative before:content-['•'] before:absolute before:left-0 before:text-gray-500">
+                      <ReactMarkdown>
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="bg-[#f9f6fe] px-4 py-3 rounded-lg max-w-[70%]">
                   <div className="text-[14px] text-gray-700 leading-relaxed">
-                    {message.content}
+                    <div className="prose prose-sm prose-gray max-w-none prose-ul:list-none prose-ul:pl-0 prose-li:pl-4 prose-li:relative before:content-['•'] before:absolute before:left-0 before:text-gray-500">
+                      <ReactMarkdown>
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 </div>
               )}

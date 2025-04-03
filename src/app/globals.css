@@ -24,3 +24,17 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .chat-message ul {
+    @apply list-disc pl-5 space-y-1;
+  }
+  
+  .chat-message li {
+    @apply marker:text-gray-500;
+  }
+}

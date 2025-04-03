@@ -18,6 +18,9 @@ import { useChat } from '@/contexts/ChatContext';
 import { checkAuth } from '@/lib/auth';
 import clsx from 'clsx';
 import { Components } from 'react-markdown';
+import { v4 as uuidv4 } from 'uuid';
+import Link from 'next/link';
+import { ChatMessage } from '@/components/chat/ChatMessage';
 
 interface ChatItem {
   chat_id: string;
@@ -91,23 +94,6 @@ const Code: React.FC<CodeProps> = ({ inline = false, className, children }) => {
   ) : (
     <code className={className}>{children}</code>
   );
-};
-
-const markdownComponents: Components = {
-  code: ({ className, children }) => {
-    const match = /language-(\w+)/.exec(className || '');
-    return match ? (
-      <SyntaxHighlighter
-        style={tomorrow as any}
-        language={match[1]}
-        PreTag="div"
-      >
-        {String(children).replace(/\n$/, '')}
-      </SyntaxHighlighter>
-    ) : (
-      <code className={className}>{children}</code>
-    );
-  }
 };
 
 export default function ChatPage() {
@@ -282,63 +268,35 @@ function ChatContent() {
   }, [localMessages]);
 
   const handleSendMessage = async (messageText?: string) => {
+    if (!messageText?.trim() || isSending || !selectedAgent) return;
+
+    const userMessage: Message = {
+      id: uuidv4(),
+      content: messageText.trim(),
+      role: 'human',
+      timestamp: new Date().toISOString()
+    };
+
+    setLocalMessages((prev: Message[]) => [...prev, userMessage]);
+    setInputMessage('');
+    setIsSending(true);
+
     try {
       const authData = checkAuth();
       if (!authData) return;
 
-      const message = messageText || inputMessage;
-      if (!message.trim() || !selectedAgent) return;
-
-      setInputMessage('');
-      
-      // Tambahkan pesan user ke context
-      const userMessage = {
-        role: 'human',
-        content: message,
-        timestamp: new Date().toISOString()
-      };
-      setMessagesContext(prev => [...prev, userMessage]);
-      
       // Gunakan chatId yang ada atau selectedChat yang sudah ada
-      let currentChatId = chatId || selectedChat;
+      const currentChatId = chatId || selectedChat;
 
-      // Buat chat baru hanya jika belum ada chatId sama sekali
-      if (!currentChatId) {
-        const newChatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/newid', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authData.token}`
-          },
-          body: JSON.stringify({
-            userId: authData.user.id,
-            agentId: selectedAgent.id,
-            chatName: selectedAgent.name,
-            agentName: selectedAgent.name
-          })
-        });
-
-        if (!newChatResponse.ok) {
-          throw new Error('Failed to create new chat');
-        }
-
-        const newChatData = await newChatResponse.json();
-        currentChatId = newChatData.chatId;
-        setSelectedChat(currentChatId);
-        setActiveChatTitle(selectedAgent.name);
-      }
-
-      // Kirim pesan ke agent
       const response = await fetch(selectedAgent.webhook_url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
         },
         body: JSON.stringify({
           userId: authData.user.id,
           chatId: currentChatId,
-          message: message,
+          message: userMessage.content,
           agentId: selectedAgent.id,
           agentName: selectedAgent.name
         })
@@ -349,64 +307,51 @@ function ChatContent() {
       }
 
       const data = await response.json();
-      const aiMessage = {
-        role: 'ai',
+      const assistantMessage: Message = {
+        id: uuidv4(),
         content: data[0].output,
+        role: 'ai',
         timestamp: new Date().toISOString()
       };
-      setMessagesContext(prev => [...prev, aiMessage]);
 
+      setLocalMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error:', error);
+    } finally {
+      setIsSending(false);
     }
   };
 
   const handleConversationStarterClick = async (starter: string) => {
+    if (!selectedAgent) return;
+
+    const userMessage: Message = {
+      id: uuidv4(),
+      content: starter,
+      role: 'human',
+      timestamp: new Date().toISOString()
+    };
+
+    setLocalMessages((prev: Message[]) => [...prev, userMessage]);
+    setInputMessage('');
+    setIsSending(true);
+
     try {
       const authData = checkAuth();
-      if (!authData || !selectedAgent) return;
+      if (!authData) return;
 
-      setIsLoading(true);
+      // Gunakan chatId yang ada atau selectedChat yang sudah ada
+      const currentChatId = chatId || selectedChat;
 
-      // Gunakan chatId yang ada atau buat baru jika belum ada
-      let currentChatId = chatId || selectedChat;
-
-      if (!currentChatId) {
-        const newChatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/newid', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authData.token}`
-          },
-          body: JSON.stringify({
-            userId: authData.user.id,
-            agentId: selectedAgent.id,
-            chatName: selectedAgent.name,
-            agentName: selectedAgent.name
-          })
-        });
-
-        if (!newChatResponse.ok) {
-          throw new Error('Failed to create new chat');
-        }
-
-        const newChatData = await newChatResponse.json();
-        currentChatId = newChatData.chatId;
-        setSelectedChat(currentChatId);
-        setActiveChatTitle(selectedAgent.name);
-      }
-
-      // Kirim pesan ke agent
       const response = await fetch(selectedAgent.webhook_url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
         },
         body: JSON.stringify({
           userId: authData.user.id,
           chatId: currentChatId,
-          message: starter,
+          message: userMessage.content,
           agentId: selectedAgent.id,
           agentName: selectedAgent.name
         })
@@ -417,24 +362,18 @@ function ChatContent() {
       }
 
       const data = await response.json();
-      const messages = [
-        { 
-          role: 'human', 
-          content: starter,
-          timestamp: new Date().toISOString()
-        },
-        { 
-          role: 'ai', 
-          content: data[0].output,
-          timestamp: new Date().toISOString()
-        }
-      ];
-      setMessagesContext(messages);
+      const assistantMessage: Message = {
+        id: uuidv4(),
+        content: data[0].output,
+        role: 'ai',
+        timestamp: new Date().toISOString()
+      };
 
+      setLocalMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error handling conversation starter:', error);
+      console.error('Error:', error);
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
     }
   };
 
@@ -595,38 +534,16 @@ function ChatContent() {
               </div>
             ) : (
               <>
-                {localMessages.map((message, index) => (
+                {localMessages.map((message) => (
                   <div
-                    key={message.id || `message-${index}`}
+                    key={message.id}
                     className={clsx(
-                      "flex items-start mb-6",
-                      message.role === 'ai' ? "justify-start" : "justify-end"
+                      'flex items-start mb-6',
+                      message.role === 'human' ? 'justify-end' : 'justify-start'
                     )}
                   >
-                    {message.role === 'ai' ? (
-                      <div className="w-full bg-white">
-                        <div className="text-[14px] text-gray-700 leading-relaxed py-3 px-8">
-                          <ReactMarkdown components={markdownComponents}>
-                            {message.content}
-                          </ReactMarkdown>
-                          <div className="text-[11px] mt-2 text-gray-400">
-                            {new Date(message.timestamp).toLocaleTimeString()}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-[#f9f6fe] px-4 py-3 rounded-lg max-w-[70%]">
-                        <div className="text-[14px] text-gray-700 leading-relaxed">
-                          <ReactMarkdown components={markdownComponents}>
-                      {message.content}
-                    </ReactMarkdown>
+                    <ChatMessage message={message} />
                   </div>
-                        <div className="text-[11px] mt-2 text-gray-500">
-                          {new Date(message.timestamp).toLocaleTimeString()}
-                        </div>
-                      </div>
-                  )}
-                </div>
                 ))}
                 <div ref={messagesEndRef} />
               </>
