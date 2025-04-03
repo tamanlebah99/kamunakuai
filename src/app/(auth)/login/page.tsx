@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
@@ -38,8 +38,19 @@ export default function LoginPage() {
       if (!response.ok) {
         throw new Error(data.message || 'Login failed');
       }
+      
+      // Simpan data auth dengan format yang benar
+      localStorage.setItem('auth', JSON.stringify({
+        token: data.id,
+        user: {
+          id: data.id, // gunakan id yang sama sebagai user id
+          name: data.name || data.email.split('@')[0]
+        }
+      }));
 
-      localStorage.setItem('auth', JSON.stringify(data));
+      // Trigger event auth changed
+      window.dispatchEvent(new Event('auth-changed'));
+
       router.push('/explore');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -47,6 +58,79 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Load Google API Script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+      // @ts-ignore - Google API types not available
+      google.accounts.id.initialize({
+        client_id: '394122359778-fjkqodqq7brmtakfipce8a8b3ib0kjcj.apps.googleusercontent.com',
+        callback: async (response: any) => {
+          try {
+            const result = await fetch('https://coachbot-n8n-01.fly.dev/webhook/google-auth', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                idToken: response.credential
+              })
+            });
+
+            const data = await result.json();
+            
+            if (!result.ok) {
+              throw new Error(data.message || 'Login with Google failed');
+            }
+
+            // Ambil session pertama dari array response
+            const session = Array.isArray(data) ? data[0] : data;
+
+            // Decode Google credential untuk mendapatkan info user
+            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            
+            // Simpan data auth dengan format yang benar
+            localStorage.setItem('auth', JSON.stringify({
+              token: session.id,
+              user: {
+                id: session.user_id,
+                name: payload.name || 'User'
+              }
+            }));
+
+            // Trigger event auth changed
+            window.dispatchEvent(new Event('auth-changed'));
+
+            router.push('/explore');
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Login with Google failed');
+          }
+        },
+      });
+
+      // @ts-ignore
+      google.accounts.id.renderButton(
+        document.getElementById('googleButton'),
+        { 
+          theme: 'outline',
+          size: 'large',
+          width: '100%',
+          text: 'signin_with',
+          locale: 'id_ID',
+        }
+      );
+    };
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
@@ -129,6 +213,19 @@ export default function LoginPage() {
                 >
                   {isLoading ? 'Memproses...' : 'Masuk'}
                 </button>
+              </div>
+
+              <div className="relative mt-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Atau masuk dengan</span>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <div id="googleButton"></div>
               </div>
             </form>
           </div>

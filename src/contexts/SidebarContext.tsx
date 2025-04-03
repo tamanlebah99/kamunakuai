@@ -22,42 +22,105 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   });
   const isInitialLoad = useRef(true);
 
-  useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        const auth = localStorage.getItem('auth');
-        if (!auth) return;
-
-        const authData = JSON.parse(auth);
-        
-        // Load recent agents sekali saja
-        const agents = await getRecentAgents();
-        setRecentAgents(agents);
-
-        // Load chat history hanya jika belum pernah dimuat
-        if (isInitialLoad.current) {
-          const history = await getChatHistorySidebar();
-          setChatHistory(history);
-          isInitialLoad.current = false;
-        }
-      } catch (error) {
-        console.error('Error loading initial data:', error);
+  const loadInitialData = async () => {
+    try {
+      // Cek apakah di client side dan ada auth
+      if (typeof window === 'undefined') return;
+      
+      const auth = window.localStorage.getItem('auth');
+      if (!auth) {
+        // Reset data jika tidak ada auth
+        setRecentAgents([]);
+        setChatHistory({
+          today: [],
+          previous_7_days: [],
+          previous_30_days: []
+        });
+        return;
       }
-    };
 
+      const authData = JSON.parse(auth);
+      if (!authData.user || !authData.user.id) {
+        // Reset data jika tidak ada user ID
+        setRecentAgents([]);
+        setChatHistory({
+          today: [],
+          previous_7_days: [],
+          previous_30_days: []
+        });
+        return;
+      }
+      
+      // Load recent agents
+      const agents = await getRecentAgents();
+      setRecentAgents(agents);
+
+      // Load chat history
+      const history = await getChatHistorySidebar();
+      setChatHistory(history);
+      isInitialLoad.current = false;
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      // Reset data jika terjadi error
+      setRecentAgents([]);
+      setChatHistory({
+        today: [],
+        previous_7_days: [],
+        previous_30_days: []
+      });
+    }
+  };
+
+  // Effect untuk initial load dan setup event listener
+  useEffect(() => {
     loadInitialData();
-  }, []); // Hanya dijalankan sekali saat aplikasi dimuat
+
+    // Setup event listener untuk auth changes
+    window.addEventListener('auth-changed', loadInitialData);
+
+    return () => {
+      window.removeEventListener('auth-changed', loadInitialData);
+    };
+  }, []); 
 
   const loadChatHistory = async () => {
     try {
       // Skip jika tidak ada auth
-      const auth = localStorage.getItem('auth');
-      if (!auth) return;
+      if (typeof window === 'undefined') return;
+      
+      const auth = window.localStorage.getItem('auth');
+      if (!auth) {
+        // Reset chat history jika tidak ada auth
+        setChatHistory({
+          today: [],
+          previous_7_days: [],
+          previous_30_days: []
+        });
+        return;
+      }
 
+      const authData = JSON.parse(auth);
+      if (!authData.user || !authData.user.id) {
+        // Reset chat history jika tidak ada user ID
+        setChatHistory({
+          today: [],
+          previous_7_days: [],
+          previous_30_days: []
+        });
+        return;
+      }
+
+      // Load chat history dengan user ID yang baru
       const history = await getChatHistorySidebar();
       setChatHistory(history);
     } catch (error) {
       console.error('Error loading chat history:', error);
+      // Reset chat history jika terjadi error
+      setChatHistory({
+        today: [],
+        previous_7_days: [],
+        previous_30_days: []
+      });
     }
   };
 

@@ -38,13 +38,32 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        if (data.message.includes('duplicate key')) {
+          throw new Error('Email sudah terdaftar. Silakan gunakan email lain atau login jika sudah memiliki akun.');
+        }
+        throw new Error(data.message || 'Registrasi gagal');
       }
 
-      // Redirect ke halaman login setelah berhasil mendaftar
-      router.push('/login');
+      if (data.isValid) {
+        // Simpan data auth dengan format yang benar
+        localStorage.setItem('auth', JSON.stringify({
+          token: data.message,
+          user: {
+            id: data.message,
+            name: name
+          }
+        }));
+
+        // Trigger event auth changed
+        window.dispatchEvent(new Event('auth-changed'));
+
+        // Langsung masuk ke halaman explore
+        router.push('/explore');
+      } else {
+        throw new Error(data.message || 'Registrasi gagal');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : 'Registrasi gagal');
     } finally {
       setIsLoading(false);
     }

@@ -6,7 +6,6 @@ import type { ChatHistory, ChatItem, ExtendedAgent } from '@/lib/api/explore';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { API_BASE_URL } from '@/config/api';
 import { useSearchParams } from 'next/navigation';
-import { Agent } from '@/lib/api/agent';
 
 interface ChatContextType {
   messages: Message[];
@@ -68,6 +67,62 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setChats(chatHistory);
   }, [chatHistory]);
+
+  // Listen for chat-updated event
+  useEffect(() => {
+    const handleChatUpdate = () => {
+      // Reset semua state chat
+      setMessages([]);
+      setChats({
+        today: [],
+        previous_7_days: [],
+        previous_30_days: []
+      });
+      setActiveChatTitle('');
+      setSelectedAgent(null);
+      setSelectedChat(null);
+      setChatId(null);
+      setAgentId(null);
+      setWebhookUrl(null);
+    };
+
+    window.addEventListener('chat-updated', handleChatUpdate);
+    return () => {
+      window.removeEventListener('chat-updated', handleChatUpdate);
+    };
+  }, []);
+
+  // Tambahkan useEffect untuk mengatur webhookUrl saat agentId berubah
+  useEffect(() => {
+    const loadAgentWebhook = async () => {
+      if (!agentId) return;
+      
+      try {
+        const auth = localStorage.getItem('auth');
+        if (!auth) return;
+        
+        const authData = JSON.parse(auth);
+        if (!authData?.user?.id) return;
+        
+        const response = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/agents/detail?userId=${authData.user.id}&agentId=${agentId}`, {
+          headers: {
+            'Authorization': `Bearer ${authData.token}`
+          }
+        });
+        
+        if (!response.ok) return;
+        
+        const [agentDetail] = await response.json();
+        if (agentDetail?.webhook_url) {
+          setWebhookUrl(agentDetail.webhook_url);
+        }
+      } catch (error) {
+        console.error('Error loading agent webhook URL:', error);
+      }
+    };
+    
+    loadAgentWebhook();
+  }, [agentId]);
 
   const findChat = (chatId: string | null, chats: ChatHistory): ChatItem | null => {
     if (!chatId) return null;

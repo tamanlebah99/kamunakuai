@@ -45,7 +45,8 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
     setMessages: setMessagesContext,
     chatId,
     agentId,
-    webhookUrl
+    webhookUrl,
+    setWebhookUrl
   } = useChat();
 
   // Local state for messages
@@ -139,6 +140,11 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
         setActiveChatTitle(agentDetail.name);
         setSelectedChat(null);
         setMessagesContext([]);
+        
+        // Set webhook URL dari agent detail
+        if (agentDetail.webhook_url) {
+          setWebhookUrl(agentDetail.webhook_url);
+        }
 
       } catch (error) {
         console.error('Error loading agent detail:', error);
@@ -148,7 +154,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
     };
 
     loadAgentDetail();
-  }, [agentId, setSelectedAgent, setActiveChatTitle, setSelectedChat, setMessagesContext]);
+  }, [agentId, setSelectedAgent, setActiveChatTitle, setSelectedChat, setMessagesContext, setWebhookUrl]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

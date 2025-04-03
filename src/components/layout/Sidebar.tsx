@@ -52,21 +52,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const editInputRef = useRef<HTMLInputElement>(null);
   const { handleRenameChat } = useChat();
 
-  const handleParamsChange = useCallback((chatId: string | null, agentId: string | null) => {
-    setActiveChatId(chatId);
-  }, []);
-
+  // Tambahkan useEffect untuk mengatur username saat komponen dimuat
   useEffect(() => {
-    // Listen for chat-updated event untuk refresh chat history saja
-    window.addEventListener('chat-updated', loadChatHistory);
-
-    return () => {
-      window.removeEventListener('chat-updated', loadChatHistory);
-    };
-  }, []); // Hanya dijalankan sekali saat mount
-
-  useEffect(() => {
-    // Get username from localStorage
     try {
       const auth = localStorage.getItem('auth');
       if (auth) {
@@ -79,6 +66,47 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       console.error('Error getting username:', error);
     }
   }, []);
+
+  const handleParamsChange = useCallback((chatId: string | null, agentId: string | null) => {
+    setActiveChatId(chatId);
+  }, []);
+
+  useEffect(() => {
+    // Listen for chat-updated event untuk refresh chat history
+    const handleChatUpdate = () => {
+      loadChatHistory();
+    };
+    
+    // Listen for auth-changed event untuk refresh data
+    const handleAuthChange = () => {
+      // Get username from localStorage
+      try {
+        const auth = localStorage.getItem('auth');
+        if (auth) {
+          const authData = JSON.parse(auth);
+          if (authData?.user?.name) {
+            setUsername(authData.user.name);
+          }
+        } else {
+          setUsername('');
+        }
+      } catch (error) {
+        console.error('Error getting username:', error);
+        setUsername('');
+      }
+      
+      // Refresh chat history
+      loadChatHistory();
+    };
+    
+    window.addEventListener('chat-updated', handleChatUpdate);
+    window.addEventListener('auth-changed', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('chat-updated', handleChatUpdate);
+      window.removeEventListener('auth-changed', handleAuthChange);
+    };
+  }, [loadChatHistory]); // Tambahkan loadChatHistory sebagai dependency
 
   useEffect(() => {
     // Handle click outside to close profile menu
@@ -96,8 +124,13 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   const handleLogout = async () => {
     try {
+      // Hapus data auth
       localStorage.removeItem('auth');
+      // Hapus cookie Google
       document.cookie = 'g_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      // Trigger event untuk membersihkan data chat
+      window.dispatchEvent(new Event('chat-updated'));
+      // Tunggu sebentar untuk memastikan event diproses
       await new Promise(resolve => setTimeout(resolve, 100));
       router.push('/login');
       router.refresh();

@@ -23,8 +23,8 @@ export default function ChatPage() {
       <Suspense fallback={null}>
         <ChatParamsHandler />
       </Suspense>
-      <div className="flex h-screen">
-        <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+    <div className="flex h-screen">
+      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
         <Suspense fallback={<div>Loading...</div>}>
           <ChatContent 
             isSidebarOpen={isSidebarOpen} 
