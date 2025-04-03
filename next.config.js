@@ -45,11 +45,6 @@ const nextConfig = {
         ]
       }
     ];
-  },
-  // Listen on all network interfaces
-  server: {
-    hostname: '0.0.0.0',
-    port: 8090
   }
 };
 

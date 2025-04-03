@@ -96,25 +96,25 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900">
+    <div className="flex flex-col min-h-screen bg-white">
       {/* Header */}
-      <header className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-800">
+      <header className="flex justify-between items-center p-4 border-b border-gray-200">
         <Link href="/" className="flex items-center gap-2">
           <div className="w-10 h-10 rounded-full bg-[#4C1D95] flex items-center justify-center">
             <Heart className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-xl font-semibold">Kamunaku AI</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Kamunaku AI</h1>
         </Link>
         <div className="flex items-center gap-4">
           <Link
             href="/login"
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
           >
             Masuk
           </Link>
           <Link
             href="/register"
-            className="hidden md:block px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+            className="hidden md:block px-4 py-2 text-sm font-medium text-white bg-[#4C1D95] hover:bg-[#3b1672] rounded-lg"
           >
             Daftar
           </Link>
@@ -125,7 +125,7 @@ export default function Home() {
       <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full p-4">
         <div className="flex-1 flex flex-col items-center justify-center gap-8 mb-8">
           <div className="text-center space-y-4">
-            <h1 className="text-2xl md:text-4xl font-bold">Apa yang bisa saya bantu?</h1>
+            <h1 className="text-2xl md:text-4xl font-bold text-gray-900">Apa yang bisa saya bantu?</h1>
           </div>
           
           {/* Input Form - Centered */}
@@ -156,19 +156,19 @@ export default function Home() {
           {categories.map((category) => (
             <div
               key={category.id}
-              className="p-6 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-purple-500 dark:hover:border-purple-500 transition-colors duration-200 cursor-pointer"
+              className="p-6 rounded-lg border border-gray-200 hover:border-[#4C1D95] transition-colors duration-200 cursor-pointer bg-white"
             >
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/20 p-2 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg bg-[#F3E8FF] p-2 flex items-center justify-center">
                   <img
                     src={category.icon}
                     alt={category.name}
-                    className="w-6 h-6 text-purple-600"
+                    className="w-6 h-6 text-[#4C1D95]"
                   />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-2">{category.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900">{category.name}</h3>
+                  <p className="text-sm text-gray-600">
                     {category.description}
                   </p>
                 </div>
@@ -182,11 +182,11 @@ export default function Home() {
       <footer className="text-center py-4 text-sm text-gray-500">
         <p>
           Dengan mengirim pesan ke Kamunaku AI, Anda menyetujui{' '}
-          <Link href="/terms" className="font-bold text-gray-900 hover:underline">
+          <Link href="/terms" className="font-bold text-[#4C1D95] hover:underline">
             Ketentuan Layanan
           </Link>{' '}
           kami dan telah membaca{' '}
-          <Link href="/privacy" className="font-bold text-gray-900 hover:underline">
+          <Link href="/privacy" className="font-bold text-[#4C1D95] hover:underline">
             Kebijakan Privasi
           </Link>{' '}
           kami.

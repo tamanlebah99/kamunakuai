@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Search, Menu } from 'lucide-react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, Menu, Plus } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { AgentDetailModal } from '@/components/agent/AgentDetailModal';
 import { AgentCard } from '@/components/agent/AgentCard';
 import { useExplore } from '@/contexts/ExploreContext';
 import type { Agent } from '@/lib/api/explore';
 
-export default function ExplorePage() {
+function ExplorePage() {
   const router = useRouter();
   const { tabs, agents, selectedTab, setSelectedTab } = useExplore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,5 +92,14 @@ export default function ExplorePage() {
         />
       )}
     </div>
+  );
+}
+
+// Wrap the main component with Suspense
+export default function ExplorePageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ExplorePage />
+    </Suspense>
   );
 } 
