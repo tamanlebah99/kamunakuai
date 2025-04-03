@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Menu, Search, Plus, User, ChevronDown, LogOut, Settings, Crown, MessageSquare, MoreVertical, Edit2, Trash2 } from 'lucide-react';
@@ -26,10 +26,22 @@ interface ChatItemProps {
   onSelect: (chat: { chat_id: string; title: string }) => void;
 }
 
+// Komponen untuk menangani params
+function SidebarParamsHandler({ onParamsChange }: { onParamsChange: (chatId: string | null, agentId: string | null) => void }) {
+  const searchParams = useSearchParams();
+  const chatId = searchParams.get('chatId');
+  const agentId = searchParams.get('agent');
+  
+  useEffect(() => {
+    onParamsChange(chatId, agentId);
+  }, [chatId, agentId, onParamsChange]);
+  
+  return null;
+}
+
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const activeChatId = searchParams.get('chatId');
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const { recentAgents, chatHistory, loadChatHistory } = useSidebar();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -39,6 +51,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const [newChatName, setNewChatName] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
   const { handleRenameChat } = useChat();
+
+  const handleParamsChange = useCallback((chatId: string | null, agentId: string | null) => {
+    setActiveChatId(chatId);
+  }, []);
 
   useEffect(() => {
     // Listen for chat-updated event untuk refresh chat history saja
@@ -227,6 +243,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <SidebarParamsHandler onParamsChange={handleParamsChange} />
+      </Suspense>
+
       {/* Overlay untuk mobile */}
       {isOpen && (
         <div

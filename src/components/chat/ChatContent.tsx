@@ -1,4 +1,6 @@
-import { useEffect, useState, useRef } from 'react';
+'use client';
+
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Message } from '@/lib/api/chat';
 import { useChat } from '@/contexts/ChatContext';
@@ -13,11 +15,16 @@ interface ChatContentProps {
   onToggleSidebar: () => void;
 }
 
-export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps) {
-  const router = useRouter();
+// Komponen untuk menangani params
+function ChatParamsHandler() {
   const searchParams = useSearchParams();
   const chatId = searchParams.get('chatId');
   const agentId = searchParams.get('agent');
+  return null;
+}
+
+export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps) {
+  const router = useRouter();
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +42,10 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
     chats,
     setChats,
     setSelectedAgent,
-    setMessages: setMessagesContext
+    setMessages: setMessagesContext,
+    chatId,
+    agentId,
+    webhookUrl
   } = useChat();
 
   // Local state for messages
@@ -169,15 +179,12 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
 
       // Gunakan chatId yang ada atau selectedChat yang sudah ada
       const currentChatId = chatId || selectedChat;
-
-      // Ambil webhook_url dari selectedAgent atau dari pesan terakhir
-      const webhook_url = selectedAgent?.webhook_url || (messages.length > 0 ? messages[0].webhook_url : undefined);
       
-      if (!webhook_url) {
+      if (!webhookUrl) {
         throw new Error('No webhook URL available');
       }
 
-      const response = await fetch(webhook_url, {
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -206,7 +213,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
         content: data[0].output,
         role: 'ai',
         timestamp: new Date().toISOString(),
-        webhook_url: webhook_url
+        webhook_url: webhookUrl
       };
 
       setLocalMessages(prev => [...prev, assistantMessage]);
@@ -327,10 +334,13 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
   }
 
   return (
-    <div className={clsx(
-      "flex flex-col flex-1 h-screen",
-      isSidebarOpen ? "md:pl-64" : ""
-    )}>
+    <div className={clsx('flex-1 flex flex-col h-screen transition-all duration-200 ease-in-out', {
+      'ml-64': isSidebarOpen,
+      'ml-0': !isSidebarOpen
+    })}>
+      <Suspense fallback={null}>
+        <ChatParamsHandler />
+      </Suspense>
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-900">
         <div className="flex items-center gap-4 px-4 py-4">

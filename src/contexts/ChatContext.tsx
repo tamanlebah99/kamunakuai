@@ -1,10 +1,12 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, Suspense } from 'react';
 import type { Message } from '@/lib/api/chat';
 import type { ChatHistory, ChatItem, ExtendedAgent } from '@/lib/api/explore';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { API_BASE_URL } from '@/config/api';
+import { useSearchParams } from 'next/navigation';
+import { Agent } from '@/lib/api/agent';
 
 interface ChatContextType {
   messages: Message[];
@@ -24,9 +26,26 @@ interface ChatContextType {
   setSelectedAgent: (agent: ExtendedAgent | null) => void;
   selectedChat: string | null;
   setSelectedChat: (chatId: string | null) => void;
+  chatId: string | null;
+  agentId: string | null;
+  webhookUrl: string | null;
+  setWebhookUrl: (url: string | null) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
+
+// Komponen untuk menangani params
+function ChatParamsHandler({ onParamsReady }: { onParamsReady: (chatId: string | null, agentId: string | null) => void }) {
+  const searchParams = useSearchParams();
+  const chatId = searchParams.get('chatId');
+  const agentId = searchParams.get('agent');
+
+  useEffect(() => {
+    onParamsReady(chatId, agentId);
+  }, [chatId, agentId, onParamsReady]);
+
+  return null;
+}
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -41,6 +60,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [selectedAgent, setSelectedAgent] = useState<ExtendedAgent | null>(null);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const { chatHistory } = useSidebar();
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
 
   // Update chats whenever chatHistory changes
   useEffect(() => {
@@ -64,51 +86,49 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const loadChatDetail = async (userId: string, chatId: string) => {
     try {
-      // Ambil webhook_url dari detail chat
-      const detailResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/detail', {
+      // Pertama, ambil detail chat untuk mendapatkan webhook_url
+      const detailResponse = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/chat/detail`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth') ? JSON.parse(localStorage.getItem('auth')!).token : ''}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          userId: userId,
-          chatId: chatId
+          userId,
+          chatId
         })
       });
-
-      if (!detailResponse.ok) {
-        throw new Error('Failed to get chat detail');
+      const detailData = await detailResponse.json();
+      
+      if (detailResponse.ok && detailData.length > 0) {
+        setWebhookUrl(detailData[0].webhook_url);
       }
 
-      const detailData = await detailResponse.json();
-      const webhook_url = detailData[0]?.webhook_url;
-
-      // Ambil riwayat chat
-      const chatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat', {
+      // Kemudian ambil riwayat chat
+      const chatResponse = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/chat`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth') ? JSON.parse(localStorage.getItem('auth')!).token : ''}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          userId: userId,
-          chatId: chatId
+          userId,
+          chatId
         })
       });
-
+      const chatData = await chatResponse.json();
+      
       if (chatResponse.ok) {
-        const chatData = await chatResponse.json();
-        if (Array.isArray(chatData) && chatData.length > 0) {
-          const transformedMessages = chatData.map((item: any) => ({
-            id: item.id.toString(),
-            content: item.message.content,
-            role: item.message.type === 'human' ? ('human' as const) : ('ai' as const),
-            timestamp: new Date().toISOString(),
-            webhook_url: webhook_url // Tambahkan webhook_url ke setiap pesan
-          }));
-          setMessages(transformedMessages);
-        }
+        const transformedMessages = chatData.map((item: any) => ({
+          id: item.id.toString(),
+          role: item.message.type === 'human' ? 'human' : 'ai',
+          content: item.message.content,
+          createdAt: new Date().toISOString(),
+          session_id: item.session_id,
+          additional_kwargs: item.message.additional_kwargs || {},
+          response_metadata: item.message.response_metadata || {}
+        }));
+        setMessages(transformedMessages);
+      } else {
+        console.error('Failed to load chat messages:', chatData);
       }
     } catch (error) {
       console.error('Error loading chat detail:', error);
@@ -184,25 +204,37 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ChatContext.Provider value={{ 
-      messages, 
-      setMessages, 
-      chats,
-      setChats,
-      activeChatTitle, 
-      setActiveChatTitle,
-      loadChatDetail,
-      isDataFetched,
-      setIsDataFetched,
-      isAgentsFetched,
-      setIsAgentsFetched,
-      findChat,
-      handleRenameChat,
-      selectedAgent,
-      setSelectedAgent,
-      selectedChat,
-      setSelectedChat
-    }}>
+    <ChatContext.Provider
+      value={{
+        messages,
+        setMessages,
+        chats,
+        setChats,
+        activeChatTitle,
+        setActiveChatTitle,
+        loadChatDetail,
+        isDataFetched,
+        setIsDataFetched,
+        isAgentsFetched,
+        setIsAgentsFetched,
+        findChat,
+        handleRenameChat,
+        selectedAgent,
+        setSelectedAgent,
+        selectedChat,
+        setSelectedChat,
+        chatId,
+        agentId,
+        webhookUrl,
+        setWebhookUrl,
+      }}
+    >
+      <Suspense fallback={null}>
+        <ChatParamsHandler onParamsReady={(newChatId, newAgentId) => {
+          setChatId(newChatId);
+          setAgentId(newAgentId);
+        }} />
+      </Suspense>
       {children}
     </ChatContext.Provider>
   );

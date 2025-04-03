@@ -1,4 +1,11 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
+import { Suspense } from 'react';
 import Link from 'next/link';
+import { SearchParamsProvider } from '@/components/common/SearchParamsProvider';
 
 export default function Terms() {
   return (

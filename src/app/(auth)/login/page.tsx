@@ -1,159 +1,139 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { loginWithGoogle } from '@/lib/api/auth';
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
-import { LoginForm } from '@/components/auth/LoginForm';
-import { Heart } from 'lucide-react';
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
-// Deklarasi tipe untuk window.google
-declare global {
-  interface Window {
-    google?: {
-      accounts?: {
-        id?: {
-          cancel: () => void;
-          initialize: (params: Record<string, unknown>) => void;
-          prompt: () => void;
-          renderButton: (element: HTMLElement, options: Record<string, unknown>) => void;
-        };
-      };
-    };
-  }
-}
+import { useState, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Heart } from 'lucide-react';
+import { SearchParamsProvider } from '@/components/common/SearchParamsProvider';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isGoogleReady, setIsGoogleReady] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    // Bersihkan state Google sebelumnya
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.cancel();
-    }
-    
-    // Hapus data dari sessionStorage
-    sessionStorage.removeItem('google_auto_select');
-    
-    // Tunggu sebentar sebelum menginisialisasi Google Sign-In
-    const timer = setTimeout(() => {
-      setIsGoogleReady(true);
-    }, 1000);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
 
-    return () => {
-      clearTimeout(timer);
-      if (window.google?.accounts?.id) {
-        window.google.accounts.id.cancel();
-      }
-    };
-  }, []);
-
-  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
     try {
-      if (!credentialResponse.credential) {
-        throw new Error('Credential tidak valid');
-      }
-      
-      console.log('Google credential:', credentialResponse);
-      
-      // Login ke backend dengan ID token
-      const response = await loginWithGoogle({
-        token: credentialResponse.credential,
-        email: '',
-        name: '',
+      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       });
 
-      console.log('Backend response:', response);
+      const data = await response.json();
 
-      if (!response || !response.user_id) {
-        throw new Error('Data response tidak valid');
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
       }
 
-      // Simpan data user di localStorage dengan format yang sama dengan login biasa
-      const authData = {
-        token: credentialResponse.credential,
-        user: {
-          id: response.user_id,
-          name: response.name,
-          email: response.email
-        }
-      };
-      
-      localStorage.setItem('auth', JSON.stringify(authData));
+      localStorage.setItem('auth', JSON.stringify(data));
       router.push('/explore');
     } catch (err) {
-      console.error('Google login error:', err);
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <Link href="/" className="flex justify-center mb-8">
-            <div className="w-12 h-12 rounded-full bg-[#4C1D95] flex items-center justify-center">
-              <Heart className="w-6 h-6 text-white" />
-            </div>
-          </Link>
-          <h2 className="text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-            Selamat datang kembali
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Silakan masuk ke akun Anda
-          </p>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-[#4C1D95] flex items-center justify-center">
+                <Heart className="w-5 h-5 text-white" />
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900">Kamunaku AI</h1>
+            </Link>
+          </div>
         </div>
+      </header>
 
-        <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-          <Suspense fallback={<div>Loading...</div>}>
-            <LoginForm />
-          </Suspense>
-
-          <div className="mt-6 text-center">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-gray-900">
-                  Atau lanjutkan dengan
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <div className="w-full">
-                {isGoogleReady && (
-                  <div className="w-full rounded-lg overflow-hidden">
-                    <GoogleLogin
-                      onSuccess={handleGoogleSuccess}
-                      onError={() => {
-                        console.error('Login Failed');
-                      }}
-                      useOneTap={false}
-                      type="standard"
-                      theme="outline"
-                      size="large"
-                      width="100%"
-                      text="continue_with"
-                      shape="rectangular"
-                      locale="id_ID"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-              Belum punya akun?{' '}
-              <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-                Daftar sekarang
+      {/* Main content */}
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Masuk ke Akun Anda</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Atau{' '}
+              <Link href="/register" className="font-medium text-[#4C1D95] hover:text-[#3b1672]">
+                daftar akun baru
               </Link>
             </p>
           </div>
+
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {error && (
+                <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                  <span className="block sm:inline">{error}</span>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  Email
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#4C1D95] focus:border-[#4C1D95]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#4C1D95] focus:border-[#4C1D95]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#4C1D95] hover:bg-[#3b1672] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4C1D95] disabled:opacity-50"
+                >
+                  {isLoading ? 'Memproses...' : 'Masuk'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 } 

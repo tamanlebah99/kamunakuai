@@ -1,16 +1,34 @@
-import { useState } from 'react';
+'use client';
+
+import { useState, Suspense, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Komponen untuk menangani params
+function LoginParamsHandler({ onParamsChange }: { onParamsChange: (isJustRegistered: boolean) => void }) {
+  const searchParams = useSearchParams();
+  const isJustRegistered = searchParams.get('registered') === 'true';
+  
+  useEffect(() => {
+    onParamsChange(isJustRegistered);
+  }, [isJustRegistered, onParamsChange]);
+  
+  return null;
+}
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isJustRegistered, setIsJustRegistered] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
+
+  const handleParamsChange = useCallback((isJustRegistered: boolean) => {
+    setIsJustRegistered(isJustRegistered);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,11 +72,12 @@ export function LoginForm() {
     }
   };
 
-  // Tampilkan pesan sukses jika baru selesai registrasi
-  const isJustRegistered = searchParams.get('registered') === 'true';
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <Suspense fallback={null}>
+        <LoginParamsHandler onParamsChange={handleParamsChange} />
+      </Suspense>
+
       {isJustRegistered && (
         <div className="p-3 text-sm text-green-600 bg-green-50 rounded-lg">
           Registrasi berhasil! Silakan login dengan akun Anda.
