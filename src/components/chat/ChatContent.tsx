@@ -6,7 +6,7 @@ import { Message } from '@/lib/api/chat';
 import { useChat } from '@/contexts/ChatContext';
 import { checkAuth } from '@/lib/auth';
 import { ChatMessage } from '@/components/chat/ChatMessage';
-import { Menu, Plus, Globe, Lightbulb, MoreHorizontal, ArrowUp } from 'lucide-react';
+import { Menu, Plus, Globe, Lightbulb, MoreHorizontal, ArrowUp, User } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -451,7 +451,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
 
       {/* Chat Input */}
       <div className="p-4">
-        <div className="max-w-3xl mx-auto space-y-4">
+        <div className="max-w-3xl mx-auto">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -459,14 +459,14 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
                 handleSendMessage();
               }
             }}
-            className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden"
+            className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden mb-1"
           >
             <div className="flex items-center gap-2 p-2">
               <button
                 type="button"
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
               >
-                <Plus size={20} className="text-gray-500" />
+                <User className="w-6 h-6 text-gray-400" />
               </button>
               
               <input
@@ -475,12 +475,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder="Ketik pesan..."
                 className="flex-1 px-4 py-2 bg-transparent focus:outline-none text-[14px] text-gray-700 dark:text-gray-300"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
+                disabled={isLoading}
               />
             </div>
 
@@ -509,7 +504,8 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
               </button>
 
               <button
-                type="button"
+                type="submit"
+                disabled={!inputMessage.trim() || isLoading}
                 className="p-2 bg-black hover:bg-gray-900 rounded-full ml-auto"
               >
                 <ArrowUp size={16} className="text-white" />

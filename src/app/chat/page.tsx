@@ -16,15 +16,15 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 export default function ChatPage() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <>
       <Suspense fallback={null}>
         <ChatParamsHandler />
       </Suspense>
-    <div className="flex h-screen">
-      <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
+      <div className="flex h-screen">
+        <Sidebar isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)} />
         <Suspense fallback={<div>Loading...</div>}>
           <ChatContent 
             isSidebarOpen={isSidebarOpen} 

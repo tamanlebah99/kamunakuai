@@ -56,6 +56,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(true);
   const [chatId] = useState(() => uuidv4());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -278,10 +279,10 @@ export default function Home() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input Form - Bottom Dock */}
+              {/* Chat Input */}
               <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100">
-                <div className="max-w-5xl mx-auto p-4">
-                  <form onSubmit={handleSubmit} className="flex flex-col bg-white rounded-2xl shadow-lg overflow-hidden">
+                <div className="max-w-5xl mx-auto px-4">
+                  <form onSubmit={handleSubmit} className="flex flex-col bg-white rounded-2xl shadow-lg overflow-hidden mb-2">
                     <div className="flex items-center gap-2 p-2">
                       <User className="w-6 h-6 text-gray-400" />
                       <input
@@ -301,27 +302,30 @@ export default function Home() {
                       </button>
                     </div>
                   </form>
-                  <p className="text-xs text-gray-500 text-center mt-2">
-                    Kamunaku AI bisa salah. Periksa info penting.
-                  </p>
+                  
+                  {/* Disclaimer */}
+                  <div className="text-center pb-4 text-xs text-gray-500">
+                    {messages.length === 0 ? (
+                      <p>
+                        Dengan mengirim pesan ke Kamunaku AI, Anda menyetujui{' '}
+                        <Link href="/terms" className="font-bold text-[#4C1D95] hover:underline">
+                          Ketentuan Layanan
+                        </Link>{' '}
+                        kami dan telah membaca{' '}
+                        <Link href="/privacy" className="font-bold text-[#4C1D95] hover:underline">
+                          Kebijakan Privasi
+                        </Link>{' '}
+                        kami.
+                      </p>
+                    ) : (
+                      <p className="text-gray-500">
+                        Kamunaku AI bisa salah. Periksa info penting.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </main>
-
-            {/* Footer */}
-            <footer className="text-center py-4 text-sm text-gray-500">
-              <p>
-                Dengan mengirim pesan ke Kamunaku AI, Anda menyetujui{' '}
-                <Link href="/terms" className="font-bold text-[#4C1D95] hover:underline">
-                  Ketentuan Layanan
-                </Link>{' '}
-                kami dan telah membaca{' '}
-                <Link href="/privacy" className="font-bold text-[#4C1D95] hover:underline">
-                  Kebijakan Privasi
-                </Link>{' '}
-                kami.
-              </p>
-            </footer>
           </div>
         )}
       </SearchParamsProvider>

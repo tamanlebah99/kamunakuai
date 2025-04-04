@@ -166,11 +166,25 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   }, [editingChatId]);
 
   const handleChatSelect = (chat: { chat_id: string; title: string }) => {
-    router.replace(`/chat?chatId=${chat.chat_id}`, { scroll: false });
+    if (window.innerWidth < 768) {
+      onToggle();
+      setTimeout(() => {
+        router.replace(`/chat?chatId=${chat.chat_id}`, { scroll: false });
+      }, 50);
+    } else {
+      router.replace(`/chat?chatId=${chat.chat_id}`, { scroll: false });
+    }
   };
 
   const handleAgentClick = (agent: Agent) => {
-    router.push(`/chat?agent=${agent.id}`);
+    if (window.innerWidth < 768) {
+      onToggle();
+      setTimeout(() => {
+        router.push(`/chat?agent=${agent.id}`);
+      }, 50);
+    } else {
+      router.push(`/chat?agent=${agent.id}`);
+    }
   };
 
   const ChatItem = ({ chat, isActive, onSelect }: ChatItemProps) => {
@@ -207,11 +221,14 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             "flex items-center justify-between px-2 py-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800",
             isActive && "bg-gray-100 dark:bg-gray-800"
           )}
+          onClick={(e) => {
+            // Jika tidak sedang klik tombol more options
+            if (!(e.target as HTMLElement).closest('button')) {
+              onSelect(chat);
+            }
+          }}
         >
-          <div 
-            className="flex-1 mr-2" 
-            onClick={() => onSelect(chat)}
-          >
+          <div className="flex-1 mr-2">
             {isRenaming ? (
               <input
                 type="text"
@@ -231,6 +248,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 }}
                 className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded focus:outline-none focus:border-blue-500"
                 autoFocus
+                onClick={(e) => e.stopPropagation()}
               />
             ) : (
               <span className="text-sm text-gray-700 dark:text-gray-300 break-words">
@@ -240,7 +258,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           </div>
           
           <button
-            onClick={() => setShowDropdown(!showDropdown)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDropdown(!showDropdown);
+            }}
             className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <MoreVertical size={16} className="text-gray-500" />
@@ -252,7 +273,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
             <div className="py-1">
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setIsRenaming(true);
                   setNewTitle(chat.title);
                   setShowDropdown(false);
@@ -262,7 +284,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 Rename
               </button>
               <button
-                onClick={handleDelete}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete();
+                }}
                 className="w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 Delete
@@ -318,12 +343,12 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         <div className="flex-1 overflow-y-auto">
           {/* Menu */}
           <nav className="px-4 pb-4">
-            <Link
-              href="/explore"
+            <Link 
+              href="/explore" 
               className="flex items-center gap-3 px-2 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
             >
-              <Crown size={16} />
-              Explore Agent
+              <Crown size={20} className="text-gray-500" />
+              <span>Explore Agent</span>
             </Link>
           </nav>
 
