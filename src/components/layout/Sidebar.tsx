@@ -426,7 +426,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         </div>
 
         {/* User profile - always at bottom */}
-        <div className="mt-auto p-4 bg-[hsl(262,80%,98%)] dark:bg-[hsl(262,80%,10%)]">
+        <div className="mt-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom,16px))] bg-[hsl(262,80%,98%)] dark:bg-[hsl(262,80%,10%)]">
           <div ref={profileMenuRef} className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}

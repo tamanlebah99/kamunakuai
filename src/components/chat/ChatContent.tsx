@@ -340,7 +340,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
   }
 
   return (
-    <div className={clsx('flex-1 flex flex-col h-screen transition-all duration-200 ease-in-out', {
+    <div className={clsx('flex-1 flex flex-col h-screen overflow-hidden transition-all duration-200 ease-in-out', {
       'ml-64': isSidebarOpen,
       'ml-0': !isSidebarOpen
     })}>
@@ -348,7 +348,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
         <ChatParamsHandler />
       </Suspense>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-gray-900">
+      <div className="flex-none bg-white dark:bg-gray-900">
         <div className="flex items-center gap-4 px-4 py-4">
           <button
             onClick={onToggleSidebar}
@@ -363,8 +363,8 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="max-w-3xl mx-auto">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto p-4">
           {localMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
               {selectedAgent && (
@@ -449,9 +449,9 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
         </div>
       </div>
 
-      {/* Chat Input */}
-      <div className="p-4">
-        <div className="max-w-3xl mx-auto">
+      {/* Footer - Chat Input */}
+      <div className="flex-none bg-white dark:bg-gray-900">
+        <div className="max-w-3xl mx-auto px-4">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -459,7 +459,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
                 handleSendMessage();
               }
             }}
-            className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden mb-1"
+            className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden mb-1 mt-4"
           >
             <div className="flex items-center gap-2 p-2">
               <button
@@ -513,7 +513,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
             </div>
           </form>
 
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center pb-4 md:pb-4 pb-[calc(1rem+env(safe-area-inset-bottom,16px))]">
             Kamunaku AI bisa salah. Periksa info penting.
           </p>
         </div>

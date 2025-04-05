@@ -8,11 +8,11 @@ primary_region = 'sin'
 
 [build]
   [build.args]
-    NEXT_PUBLIC_GOOGLE_CLIENT_ID = "394122359778-fjkqodqq7brmtakfipce8a8b3ib0kjcj.apps.googleusercontent.com"
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID = "${NEXT_PUBLIC_GOOGLE_CLIENT_ID}"
 
 [env]
   PORT = '8090'
-  NEXT_PUBLIC_GOOGLE_CLIENT_ID = "394122359778-fjkqodqq7brmtakfipce8a8b3ib0kjcj.apps.googleusercontent.com"
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID = "${NEXT_PUBLIC_GOOGLE_CLIENT_ID}"
   NEXT_PUBLIC_API_URL = "https://kamunakuai.fly.dev/api"
 
 [http_service]
