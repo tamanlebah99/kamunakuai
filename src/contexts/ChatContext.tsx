@@ -104,10 +104,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         const authData = JSON.parse(auth);
         if (!authData?.user?.id) return;
         
-        const response = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/agents/detail?userId=${authData.user.id}&agentId=${agentId}`, {
+        const response = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/agents/detail`, {
+          method: 'POST',
           headers: {
-            'Authorization': `Bearer ${authData.token}`
-          }
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: authData.user.id,
+            agentId: agentId,
+            sessionId: authData.token
+          })
         });
         
         if (!response.ok) return;
@@ -199,15 +205,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const authData = localStorage.getItem('auth') ? JSON.parse(localStorage.getItem('auth')!) : null;
       if (!authData) return;
 
-      const response = await fetch(`${API_BASE_URL}/chat/edit`, {
+      const response = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/chat/edit`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          id: chatId,
-          chatName: newTitle.trim()
+          userId: authData.user.id,
+          chatId,
+          chatName: newTitle.trim(),
+          sessionId: authData.token
         })
       });
 

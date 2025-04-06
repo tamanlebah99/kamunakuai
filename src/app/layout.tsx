@@ -6,6 +6,7 @@ import { GoogleAuthProvider } from '@/components/providers/GoogleOAuthProvider';
 import { SidebarProvider } from '@/contexts/SidebarContext';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { ExploreProvider } from '@/contexts/ExploreContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,22 +23,24 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={inter.className}>
-        <SidebarProvider>
-          <ChatProvider>
-            <ExploreProvider>
-              <GoogleAuthProvider>
-                <ThemeProvider
-                  attribute="class"
-                  defaultTheme="system"
-                  enableSystem
-                  disableTransitionOnChange
-                >
-                  {children}
-                </ThemeProvider>
-              </GoogleAuthProvider>
-            </ExploreProvider>
-          </ChatProvider>
-        </SidebarProvider>
+        <AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <GoogleAuthProvider>
+              <SidebarProvider>
+                <ChatProvider>
+                  <ExploreProvider>
+                    {children}
+                  </ExploreProvider>
+                </ChatProvider>
+              </SidebarProvider>
+            </GoogleAuthProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

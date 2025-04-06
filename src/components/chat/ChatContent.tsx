@@ -108,10 +108,16 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
 
         setIsLoading(true);
 
-        const response = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/agents/detail?userId=${authData.user.id}&agentId=${agentId}`, {
+        const response = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/agents/detail`, {
+          method: 'POST',
           headers: {
-            'Authorization': `Bearer ${authData.token}`
-          }
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: authData.user.id,
+            agentId: agentId,
+            sessionId: authData.token
+          })
         });
 
         if (!response.ok) {
@@ -193,8 +199,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           userId: authData.user.id,
@@ -205,7 +210,8 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
             agentName: selectedAgent.name
           }),
           isAction: true,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          sessionId: authData.token
         })
       });
 
@@ -252,14 +258,14 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
       const newChatResponse = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/newid', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           userId: authData.user.id,
           agentId: selectedAgent.id,
           chatName: selectedAgent.name,
-          agentName: selectedAgent.name
+          agentName: selectedAgent.name,
+          sessionId: authData.token
         })
       });
 
@@ -307,10 +313,15 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
       setLocalMessages(prev => [...prev, assistantMessage]);
 
       // 3. Refresh history sidebar hanya saat membuat chat baru
-      const historyResponse = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/chat/history-sidebar?userId=${authData.user.id}`, {
+      const historyResponse = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/chat/history-sidebar`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authData.token}`
-        }
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: authData.user.id,
+          sessionId: authData.token
+        })
       });
 
       if (historyResponse.ok) {

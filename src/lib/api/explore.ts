@@ -3,8 +3,24 @@ import { getAuthToken } from '@/lib/utils/auth';
 
 // Helper untuk mendapatkan user data
 const getAuthData = () => {
-  const auth = JSON.parse(localStorage.getItem('auth') || '{}');
-  return auth;
+  try {
+    const auth = localStorage.getItem('auth');
+    if (!auth) return {};
+    
+    const authData = JSON.parse(auth);
+    // Pastikan kita menggunakan user_id, bukan token
+    return {
+      token: authData.token,
+      user: {
+        id: authData.user?.id || '', // user_id yang benar
+        name: authData.user?.name,
+        email: authData.user?.email
+      }
+    };
+  } catch (error) {
+    console.error('Error parsing auth data:', error);
+    return {};
+  }
 };
 
 export interface Tab {
@@ -64,15 +80,21 @@ export async function getTabs(): Promise<Tab[]> {
   try {
     const authData = getAuthData();
     const userId = authData.user?.id;
+    const token = authData.token;
 
-    if (!userId) {
-      throw new Error('User ID not found');
+    if (!userId || !token) {
+      throw new Error('User ID or session not found');
     }
 
-    const response = await fetch(`${API_BASE_URL}/explore/tabs?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/explore/tabs`, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json'
       },
+      body: JSON.stringify({
+        userId,
+        sessionId: token
+      })
     });
 
     if (!response.ok) {
@@ -90,15 +112,22 @@ export async function getFeaturedAgents(categoryId: number): Promise<Agent[]> {
   try {
     const authData = getAuthData();
     const userId = authData.user?.id;
+    const token = authData.token;
 
-    if (!userId) {
-      throw new Error('User ID not found');
+    if (!userId || !token) {
+      throw new Error('User ID or session not found');
     }
 
-    const response = await fetch(`${API_BASE_URL}/explore/featured-agents?userId=${userId}&categoryId=${categoryId}`, {
+    const response = await fetch(`${API_BASE_URL}/explore/featured-agents`, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json'
       },
+      body: JSON.stringify({
+        userId,
+        categoryId,
+        sessionId: token
+      })
     });
 
     if (!response.ok) {
@@ -116,15 +145,21 @@ export async function getRecentAgents(): Promise<Agent[]> {
   try {
     const authData = getAuthData();
     const userId = authData.user?.id;
+    const token = authData.token;
 
-    if (!userId) {
-      throw new Error('User ID not found');
+    if (!userId || !token) {
+      throw new Error('User ID or session not found');
     }
 
-    const response = await fetch(`${API_BASE_URL}/explore/recent-agents?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/explore/recent-agents`, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json'
       },
+      body: JSON.stringify({
+        userId,
+        sessionId: token
+      })
     });
 
     if (!response.ok) {
@@ -147,15 +182,21 @@ export async function getChatHistory(): Promise<ChatHistory> {
   try {
     const authData = getAuthData();
     const userId = authData.user?.id;
+    const token = authData.token;
 
-    if (!userId) {
-      throw new Error('User ID not found');
+    if (!userId || !token) {
+      throw new Error('User ID or session not found');
     }
 
-    const response = await fetch(`${API_BASE_URL}/chat/history-sidebar?userId=${userId}`, {
+    const response = await fetch(`${API_BASE_URL}/chat/history-sidebar`, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json'
       },
+      body: JSON.stringify({
+        userId,
+        sessionId: token
+      })
     });
 
     if (!response.ok) {
@@ -182,15 +223,22 @@ export async function getAgentDetail(agentId: string): Promise<AgentDetail> {
   try {
     const authData = getAuthData();
     const userId = authData.user?.id;
+    const token = authData.token;
 
-    if (!userId) {
-      throw new Error('User ID not found');
+    if (!userId || !token) {
+      throw new Error('User ID or session not found');
     }
 
-    const response = await fetch(`${API_BASE_URL}/agents/detail?userId=${userId}&agentId=${agentId}`, {
+    const response = await fetch(`${API_BASE_URL}/agents/detail`, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getAuthToken()}`,
+        'Content-Type': 'application/json'
       },
+      body: JSON.stringify({
+        userId,
+        agentId,
+        sessionId: token
+      })
     });
 
     if (!response.ok) {
@@ -198,7 +246,7 @@ export async function getAgentDetail(agentId: string): Promise<AgentDetail> {
     }
 
     const data = await response.json();
-    return data[0];  // Response adalah array, ambil item pertama
+    return data[0];
   } catch (error) {
     console.error('Error fetching agent details:', error);
     throw error;

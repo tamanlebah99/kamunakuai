@@ -49,7 +49,15 @@ export async function login(credentials: LoginCredentials): Promise<AuthResponse
     throw new Error(error.message || 'Login gagal');
   }
 
-  return response.json();
+  const data = await response.json();
+  return {
+    token: data.id,
+    user: {
+      id: data.id,
+      name: data.name || data.email.split('@')[0],
+      email: data.email
+    }
+  };
 }
 
 export async function register(data: RegisterData): Promise<AuthResponse> {
@@ -75,6 +83,7 @@ export async function loginWithGoogle(data: GoogleLoginData): Promise<any> {
     headers: {
       'Content-Type': 'application/json',
     },
+    credentials: 'include',
     body: JSON.stringify({ idToken: data.token }),
   });
 

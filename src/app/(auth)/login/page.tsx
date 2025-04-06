@@ -35,22 +35,21 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (!response.ok || !data.isValid) {
         throw new Error(data.message || 'Login failed');
       }
       
-      // Simpan data auth dengan format yang benar
+      // Simpan data auth dengan format yang konsisten
       localStorage.setItem('auth', JSON.stringify({
         token: data.id,
         user: {
-          id: data.id, // gunakan id yang sama sebagai user id
-          name: data.name || data.email.split('@')[0]
+          id: data.user_id,
+          name: data.name || data.email.split('@')[0],
+          email: data.email
         }
       }));
 
-      // Trigger event auth changed
       window.dispatchEvent(new Event('auth-changed'));
-
       router.push('/explore');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -73,6 +72,9 @@ export default function LoginPage() {
         client_id: '394122359778-fjkqodqq7brmtakfipce8a8b3ib0kjcj.apps.googleusercontent.com',
         callback: async (response: any) => {
           try {
+            setIsLoading(true);
+            setError('');
+            
             const result = await fetch('https://coachbot-n8n-01.fly.dev/webhook/google-auth', {
               method: 'POST',
               headers: {
@@ -95,23 +97,24 @@ export default function LoginPage() {
             // Decode Google credential untuk mendapatkan info user
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
             
-            // Simpan data auth dengan format yang benar
+            // Simpan data auth dengan format yang konsisten
             localStorage.setItem('auth', JSON.stringify({
               token: session.id,
               user: {
                 id: session.user_id,
-                name: payload.name || 'User'
+                name: session.name || payload.name,
+                email: session.email || payload.email
               }
             }));
 
-            // Trigger event auth changed
             window.dispatchEvent(new Event('auth-changed'));
-
             router.push('/explore');
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Login with Google failed');
+          } finally {
+            setIsLoading(false);
           }
-        },
+        }
       });
 
       // @ts-ignore
