@@ -3,34 +3,39 @@ import { AuthData } from '@/contexts/AuthContext';
 // URL API n8n
 const N8N_API_URL = 'https://coachbot-n8n-01.fly.dev/webhook';
 
-export async function getAuthData(): Promise<AuthData> {
-  console.log('Getting auth data from:', `${N8N_API_URL}/auth/me`);
-  
-  const response = await fetch(`${N8N_API_URL}/auth/me`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      sessionId: token
-    })
-  });
-  
-  console.log('Response status:', response.status);
-  
-  if (!response.ok) {
-    console.log('Auth failed:', response.status);
-    throw new Error('No auth data found');
+export async function getAuthData(): Promise<AuthData | null> {
+  try {
+    console.log('Getting auth data from:', `${N8N_API_URL}/auth/me`);
+    
+    const response = await fetch(`${N8N_API_URL}/auth/me`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sessionId: ''  // Kirim string kosong jika tidak ada token
+      })
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      console.log('Auth failed:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    console.log('Auth data:', data);
+    return data;
+  } catch (error) {
+    console.error('Error getting auth data:', error);
+    return null;
   }
-  
-  const data = await response.json();
-  console.log('Auth data:', data);
-  return data;
 }
 
-export async function getAuthToken(): Promise<string> {
+export async function getAuthToken(): Promise<string | null> {
   const authData = await getAuthData();
-  return authData.token;
+  return authData?.token || null;
 }
 
 export async function setAuthData(data: AuthData): Promise<void> {

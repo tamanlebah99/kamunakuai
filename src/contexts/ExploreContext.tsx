@@ -1,26 +1,33 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Tab, Agent, getTabs, getFeaturedAgents } from '@/lib/api/explore';
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import { Tab, Agent, getTabs, getAllAgents } from '@/lib/api/explore';
 
 interface ExploreContextType {
   tabs: Tab[];
-  agents: Agent[];
+  allAgents: Agent[];
+  filteredAgents: Agent[];
   selectedTab: Tab;
   setSelectedTab: (tab: Tab) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  isLoading: boolean;
 }
 
 const ExploreContext = createContext<ExploreContextType | undefined>(undefined);
 
 export function ExploreProvider({ children }: { children: ReactNode }) {
   const [tabs, setTabs] = useState<Tab[]>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [selectedTab, setSelectedTab] = useState<Tab>({ category_id: 1, category_name: 'Pengembangan Diri', sequence: 1 });
+  const [searchQuery, setSearchQuery] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [filteredAgents, setFilteredAgents] = useState<Agent[]>([]);
 
   const loadInitialData = async () => {
     try {
-      // Cek apakah di client side dan ada auth
+      setIsLoading(true);
       if (typeof window === 'undefined') return;
       
       const auth = window.localStorage.getItem('auth');
@@ -32,53 +39,90 @@ export function ExploreProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(true);
       const authData = JSON.parse(auth);
       
-      // Load tabs dan featured agents sekali saja
+      // Load semua data sekali saja
       const [tabsResponse, agentsResponse] = await Promise.all([
         getTabs(),
-        getFeaturedAgents(1), // Default category_id: 1
+        getAllAgents(), // Ganti ke getAllAgents untuk mengambil semua agents
       ]);
       
       setTabs(tabsResponse);
-      setAgents(agentsResponse);
+      setAllAgents(agentsResponse);
     } catch (error) {
       console.error('Error loading initial data:', error);
-      // Jika error karena autentikasi, set isAuthenticated ke false
       if (error instanceof Error && error.message === 'User ID not found') {
         setIsAuthenticated(false);
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Effect untuk initial load dan setup event listener
   useEffect(() => {
-    loadInitialData();
-
-    // Setup event listener untuk auth changes
-    window.addEventListener('auth-changed', loadInitialData);
-
-    return () => {
-      window.removeEventListener('auth-changed', loadInitialData);
-    };
-  }, []); 
-
-  // Load agents ketika tab berubah
-  useEffect(() => {
-    const loadAgents = async () => {
-      if (!isAuthenticated) return;
-      
+    const fetchData = async () => {
+      setIsLoading(true);
       try {
-        const response = await getFeaturedAgents(selectedTab.category_id);
-        setAgents(response);
+        const [tabsData, agentsData] = await Promise.all([
+          getTabs(),
+          getAllAgents()
+        ]);
+
+        // Tambahkan tab "Semua" di awal
+        const allTab: Tab = {
+          category_id: 0, // Gunakan 0 untuk tab "Semua"
+          category_name: "Semua",
+          sequence: 0
+        };
+        
+        setTabs([allTab, ...tabsData]);
+        setAllAgents(agentsData);
+        setSelectedTab(allTab); // Set default tab ke "Semua"
       } catch (error) {
-        console.error('Error loading agents:', error);
+        console.error('Error fetching explore data:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadAgents();
-  }, [selectedTab.category_id, isAuthenticated]);
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (allAgents.length > 0) {
+      let filtered = allAgents;
+
+      // Filter berdasarkan tab yang dipilih
+      if (selectedTab.category_id !== 0) { // Jika bukan tab "Semua"
+        filtered = allAgents.filter(agent => 
+          agent.category_id === selectedTab.category_id
+        );
+      }
+
+      // Filter berdasarkan pencarian
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(agent =>
+          agent.name.toLowerCase().includes(query) ||
+          agent.description.toLowerCase().includes(query)
+        );
+      }
+
+      setFilteredAgents(filtered);
+    }
+  }, [selectedTab, searchQuery, allAgents]);
 
   return (
-    <ExploreContext.Provider value={{ tabs, agents, selectedTab, setSelectedTab }}>
+    <ExploreContext.Provider 
+      value={{ 
+        tabs, 
+        allAgents,
+        filteredAgents, 
+        selectedTab, 
+        setSelectedTab,
+        searchQuery,
+        setSearchQuery,
+        isLoading 
+      }}
+    >
       {children}
     </ExploreContext.Provider>
   );

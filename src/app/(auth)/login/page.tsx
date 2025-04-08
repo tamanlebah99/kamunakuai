@@ -156,12 +156,6 @@ export default function LoginPage() {
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900">Masuk ke Akun Anda</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Atau{' '}
-              <Link href="/register" className="font-medium text-[#4C1D95] hover:text-[#3b1672]">
-                daftar akun baru
-              </Link>
-            </p>
           </div>
 
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
@@ -216,6 +210,11 @@ export default function LoginPage() {
                 >
                   {isLoading ? 'Memproses...' : 'Masuk'}
                 </button>
+                <div className="mt-4 text-center">
+                  <Link href="/register" className="text-sm text-[#4C1D95] hover:text-[#3b1672]">
+                    Atau daftar akun baru
+                  </Link>
+                </div>
               </div>
 
               <div className="relative mt-6">
@@ -229,6 +228,19 @@ export default function LoginPage() {
 
               <div className="mt-6">
                 <div id="googleButton"></div>
+              </div>
+
+              {/* Footer Links */}
+              <div className="mt-8 text-center space-y-2">
+                <div className="flex justify-center space-x-4 text-xs text-gray-500">
+                  <Link href="/terms" className="hover:text-gray-700">
+                    Kebijakan Penggunaan
+                  </Link>
+                  <span>•</span>
+                  <Link href="/privacy" className="hover:text-gray-700">
+                    Kebijakan Privacy
+                  </Link>
+                </div>
               </div>
             </form>
           </div>

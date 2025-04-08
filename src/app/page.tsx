@@ -6,16 +6,26 @@ export const fetchCache = 'force-no-store';
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Link from 'next/link';
-import { Send, User, Heart } from 'lucide-react';
+import { Send, User, Heart, Globe, Lightbulb, Mic, ArrowUp } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { SearchParamsProvider } from '@/components/common/SearchParamsProvider';
+import Image from 'next/image';
 
 interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant';
+}
+
+interface Category {
+  category_id: number;
+  category_name: string;
+  description: string;
+  icon_url: string;
+  hook: string;
+  sequence: number;
 }
 
 const markdownComponents = {
@@ -37,7 +47,7 @@ const markdownComponents = {
     const match = /language-(\w+)/.exec(className || '');
     return !inline && match ? (
       <SyntaxHighlighter
-        style={tomorrow}
+        style={dracula}
         language={match[1]}
         PreTag="div"
         className="rounded-md my-2"
@@ -56,8 +66,9 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showDisclaimer, setShowDisclaimer] = useState(true);
+  const [showInitialDisclaimer, setShowInitialDisclaimer] = useState(true);
   const [chatId] = useState(() => uuidv4());
+  const [categories, setCategories] = useState<Category[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -68,38 +79,40 @@ export default function Home() {
     scrollToBottom();
   }, [messages]);
 
-  const categories = [
-    {
-      id: 1,
-      name: "Pengembangan Diri",
-      description: "Tingkatkan dirimu dengan panduan karir, pencapaian tujuan, dan solusi masalah.",
-      icon: "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/svgs/solid/lightbulb.svg"
-    },
-    {
-      id: 2,
-      name: "Spiritual",
-      description: "Temukan inspirasi spiritual dari referensi hadits dan ajaran agama.",
-      icon: "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/svgs/solid/book-open.svg"
-    },
-    {
-      id: 3,
-      name: "Traveling",
-      description: "Dapatkan rekomendasi tempat wisata, kafe, dan aktivitas seru di Bogor.",
-      icon: "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/svgs/solid/plane.svg"
-    },
-    {
-      id: 4,
-      name: "Hobi",
-      description: "Eksplorasi hobi seperti menulis cerita dengan metode Save the Cat.",
-      icon: "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/svgs/solid/book.svg"
-    },
-    {
-      id: 5,
-      name: "Lainnya",
-      description: "Kategori tambahan untuk topik-topik umum dan unik.",
-      icon: "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.2/svgs/solid/ellipsis.svg"
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/welcome/tabs', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: '',
+            sessionId: ''
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+
+        const data = await response.json();
+        setCategories(data.sort((a: Category, b: Category) => a.sequence - b.sequence));
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        setCategories([]);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      setShowInitialDisclaimer(false);
     }
-  ];
+  }, [messages]);
 
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -152,28 +165,39 @@ export default function Home() {
     }
   };
 
-  const handleCategoryClick = async (category: { name: string; description: string }) => {
-    let message = '';
-    
-    switch (category.name) {
-      case 'Pengembangan Diri':
-        message = 'Saya tertarik dengan kategori Pengembangan Diri. Dapatkah kamu menjelaskan fitur apa yang kamu miliki terkait pengembangan diri?';
-        break;
-      case 'Spiritual':
-        message = 'Saya tertarik dengan kategori Spiritual. Bisakah kamu jelaskan fitur-fitur yang tersedia untuk membantu saya dalam hal spiritual?';
-        break;
-      case 'Traveling':
-        message = 'Saya tertarik dengan kategori Traveling. Bisa tolong jelaskan fitur apa saja yang bisa membantu saya menemukan tempat-tempat menarik di Bogor?';
-        break;
-      case 'Hobi':
-        message = 'Saya tertarik dengan kategori Hobi. Dapatkah kamu menjelaskan fitur-fitur yang tersedia untuk mengembangkan hobi saya?';
-        break;
-      default:
-        message = 'Saya tertarik dengan kategori Lainnya. Bisa tolong jelaskan fitur-fitur unik apa saja yang tersedia?';
-    }
-
+  const handleCategoryClick = async (category: Category) => {
+    const message = `Saya tertarik dengan kategori ${category.category_name}. ${category.hook}`;
     await handleSendMessage(message);
   };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (input.trim()) {
+        handleSendMessage(input);
+      }
+    }
+  };
+
+  const ChatMessage = ({ content, role }: Message) => (
+    <div
+      className={`flex items-start mb-6 ${
+        role === 'user' ? 'justify-end' : 'w-full px-4'
+      }`}
+    >
+      <div
+        className={`${
+          role === 'user'
+            ? 'max-w-[80%] bg-[#f9f6fe]'
+            : 'w-full bg-white'
+        } rounded-2xl p-4 text-gray-900`}
+      >
+        <ReactMarkdown components={markdownComponents}>
+          {content}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
@@ -214,20 +238,22 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                 {categories.map((category) => (
                   <div
-                    key={category.id}
+                    key={category.category_id}
                     onClick={() => handleCategoryClick(category)}
                     className="p-6 rounded-lg border border-gray-200 hover:border-[#4C1D95] transition-colors duration-200 cursor-pointer bg-white"
                   >
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-lg bg-[#F3E8FF] p-2 flex items-center justify-center">
-                        <img
-                          src={category.icon}
-                          alt={category.name}
-                          className="w-6 h-6 text-[#4C1D95]"
+                      <div className="w-12 h-12 rounded-lg overflow-hidden">
+                        <Image
+                          src={category.icon_url.startsWith('http') ? category.icon_url : `/images/${category.icon_url}`}
+                          alt={category.category_name}
+                          width={48}
+                          height={48}
+                          className="w-full h-full object-cover"
                         />
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold mb-2 text-gray-900">{category.name}</h3>
+                        <h3 className="text-lg font-semibold mb-2 text-gray-900">{category.category_name}</h3>
                         <p className="text-sm text-gray-600">
                           {category.description}
                         </p>
@@ -240,89 +266,92 @@ export default function Home() {
               {/* Chat Messages */}
               <div className="flex-1 overflow-y-auto mb-24">
                 {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex items-start mb-6 ${
-                      message.role === 'user' ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    {message.role === 'assistant' ? (
-                      <div className="w-full bg-white">
-                        <div className="text-[14px] text-gray-700 leading-relaxed py-3 px-8">
-                          <div className="prose prose-sm prose-gray max-w-none chat-message">
-                            <ReactMarkdown>
-                              {message.content}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-[#f9f6fe] px-4 py-3 rounded-lg max-w-[70%]">
-                        <div className="text-[14px] text-gray-700 leading-relaxed">
-                          <div className="prose prose-sm prose-gray max-w-none chat-message">
-                            <ReactMarkdown>
-                              {message.content}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <ChatMessage key={message.id} {...message} />
                 ))}
-                {isLoading && (
-                  <div className="flex items-center justify-center gap-2 text-gray-500">
-                    <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce [animation-delay:-0.3s]"></div>
-                    <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce [animation-delay:-0.15s]"></div>
-                    <div className="w-2 h-2 rounded-full bg-gray-500 animate-bounce"></div>
-                  </div>
-                )}
                 <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Input */}
-              <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100">
-                <div className="max-w-5xl mx-auto px-4">
-                  <form onSubmit={handleSubmit} className="flex flex-col bg-white rounded-2xl shadow-lg overflow-hidden mb-2">
+              <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900">
+                <div className="max-w-3xl mx-auto px-4">
+                  <form
+                    onSubmit={handleSubmit}
+                    className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden mb-1 mt-4"
+                  >
                     <div className="flex items-center gap-2 p-2">
-                      <User className="w-6 h-6 text-gray-400" />
+                      <button
+                        type="button"
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                      >
+                        <User className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                      </button>
+                      
                       <input
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         placeholder="Ketik pesan..."
-                        className="flex-1 px-4 py-2 bg-transparent focus:outline-none text-[14px] text-gray-700"
-                        disabled={isLoading}
+                        className="flex-1 px-4 py-2 bg-transparent focus:outline-none text-[14px] text-gray-700 dark:text-gray-300 placeholder:text-gray-500 dark:placeholder:text-gray-400"
                       />
+                    </div>
+
+                    <div className="flex items-center gap-2 px-2 pb-2">
+                      <button
+                        type="button"
+                        disabled
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-not-allowed rounded-full"
+                      >
+                        <Globe size={16} className="text-gray-400 dark:text-gray-500" />
+                        <span>Search</span>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        disabled
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-not-allowed rounded-full"
+                      >
+                        <Lightbulb size={16} className="text-gray-400 dark:text-gray-500" />
+                        <span>Reason</span>
+                      </button>
+
+                      <div className="flex-1"></div>
+
+                      <button
+                        type="button"
+                        disabled
+                        className="p-2 text-gray-400 dark:text-gray-500 cursor-not-allowed rounded-full"
+                      >
+                        <Mic size={16} className="text-gray-400 dark:text-gray-500" />
+                      </button>
+
                       <button
                         type="submit"
-                        disabled={!input.trim() || isLoading}
-                        className="p-2 bg-black hover:bg-gray-900 rounded-full"
+                        disabled={!input.trim()}
+                        className="p-2 bg-black dark:bg-white hover:bg-gray-900 dark:hover:bg-gray-100 rounded-full"
                       >
-                        <Send className="w-4 h-4 text-white" />
+                        <ArrowUp size={16} className="text-white dark:text-black" />
                       </button>
                     </div>
                   </form>
-                  
-                  {/* Disclaimer */}
-                  <div className="text-center pb-4 text-xs text-gray-500">
-                    {messages.length === 0 ? (
-                      <p>
+
+                  <p className="text-xs text-gray-500 text-center mt-2 pb-4 md:pb-4 pb-[calc(1rem+env(safe-area-inset-bottom,16px))]">
+                    {showInitialDisclaimer ? (
+                      <span>
                         Dengan mengirim pesan ke Kamunaku AI, Anda menyetujui{' '}
-                        <Link href="/terms" className="font-bold text-[#4C1D95] hover:underline">
+                        <Link href="/terms" className="text-[#4C1D95] hover:underline font-bold">
                           Ketentuan Layanan
                         </Link>{' '}
                         kami dan telah membaca{' '}
-                        <Link href="/privacy" className="font-bold text-[#4C1D95] hover:underline">
+                        <Link href="/privacy" className="text-[#4C1D95] hover:underline font-bold">
                           Kebijakan Privasi
                         </Link>{' '}
                         kami.
-                      </p>
+                      </span>
                     ) : (
-                      <p className="text-gray-500">
-                        Kamunaku AI bisa salah. Periksa info penting.
-                      </p>
+                      'Kamunaku AI bisa salah. Periksa info penting.'
                     )}
-                  </div>
+                  </p>
                 </div>
               </div>
             </main>

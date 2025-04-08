@@ -36,6 +36,8 @@ export interface Agent {
   provider: string;
   icon_url: string;
   webhook_url: string;
+  category?: string;
+  category_id?: number;
 }
 
 export interface ChatItem {
@@ -76,13 +78,14 @@ export interface ExtendedAgent extends Omit<Agent, 'id'> {
   webhook_url: string;
 }
 
-export async function getTabs(): Promise<Tab[]> {
+export async function getTabs(skipAuthCheck: boolean = false): Promise<Tab[]> {
   try {
     const authData = getAuthData();
     const userId = authData.user?.id;
     const token = authData.token;
 
-    if (!userId || !token) {
+    // Skip auth check jika parameter skipAuthCheck true
+    if (!skipAuthCheck && (!userId || !token)) {
       throw new Error('User ID or session not found');
     }
 
@@ -92,8 +95,8 @@ export async function getTabs(): Promise<Tab[]> {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        userId,
-        sessionId: token
+        userId: userId || '',
+        sessionId: token || ''
       })
     });
 
@@ -167,10 +170,12 @@ export async function getRecentAgents(): Promise<Agent[]> {
     }
 
     const data = await response.json();
-    return data.map((agent: any) => ({
+    return data.map((agent: Agent) => ({
       ...agent,
       provider_url: `https://${agent.provider}`,
-      rating: agent.description.match(/(\d+\.?\d*)\s*★/) ? parseFloat(agent.description.match(/(\d+\.?\d*)\s*★/)[1]) : undefined
+      rating: agent.description && agent.description.match(/(\d+\.?\d*)\s*★/) 
+        ? parseFloat(agent.description.match(/(\d+\.?\d*)\s*★/)[1]) 
+        : undefined
     }));
   } catch (error) {
     console.error('Error fetching recent agents:', error);
@@ -250,5 +255,56 @@ export async function getAgentDetail(agentId: string): Promise<AgentDetail> {
   } catch (error) {
     console.error('Error fetching agent details:', error);
     throw error;
+  }
+}
+
+export async function getAllAgents(): Promise<Agent[]> {
+  try {
+    const auth = localStorage.getItem('auth');
+    if (!auth) throw new Error('User ID not found');
+
+    const authData = JSON.parse(auth);
+    if (!authData?.user?.id) throw new Error('User ID not found');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 detik timeout
+
+    const response = await fetch(`${API_BASE_URL}/explore/featured-agents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        userId: authData.user.id,
+        sessionId: authData.token
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch agents: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    // Pastikan setiap agent memiliki category_id
+    return data.map((agent: any) => ({
+      ...agent,
+      category_id: agent.category_id || 1 // Default ke 1 jika tidak ada
+    }));
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        console.error('Request timeout: Gagal mengambil data agent');
+      } else if (!navigator.onLine) {
+        console.error('Tidak ada koneksi internet');
+      } else {
+        console.error('Error fetching all agents:', error.message);
+      }
+    }
+    return [];
   }
 } 

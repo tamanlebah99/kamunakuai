@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, Search, Plus, User, ChevronDown, LogOut, Settings, Crown, MessageSquare, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { getRecentAgents } from '@/lib/api/explore';
 import { renameChat, deleteChat } from '@/lib/api/chat';
@@ -273,6 +274,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           <div className="absolute right-0 mt-1 w-48 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
             <div className="py-1">
               <button
+                key="rename-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsRenaming(true);
@@ -281,16 +283,23 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 }}
                 className="w-full px-4 py-2 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                Rename
+                <span className="flex items-center gap-2">
+                  <Edit2 size={16} />
+                  Rename
+                </span>
               </button>
               <button
+                key="delete-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDelete();
                 }}
                 className="w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-gray-100 dark:hover:bg-gray-800"
               >
-                Delete
+                <span className="flex items-center gap-2">
+                  <Trash2 size={16} />
+                  Delete
+                </span>
               </button>
             </div>
           </div>
@@ -358,16 +367,28 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
               AGENTS
             </h2>
             <div className="mt-2 space-y-1">
-              {recentAgents.map((agent) => (
-                <button
-                  key={agent.id}
-                  onClick={() => handleAgentClick(agent)}
-                  className="w-full flex items-center gap-3 px-2 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
-                >
-                  <img src={agent.icon_url} alt={agent.name} className="w-6 h-6 rounded-full" />
-                  <span className="text-left">{agent.name}</span>
-                </button>
-              ))}
+              {recentAgents && recentAgents.length > 0 && recentAgents.some(agent => agent.id) && (
+                recentAgents
+                  .filter(agent => agent.id) // Filter hanya agent yang memiliki id
+                  .map((agent) => (
+                    <button
+                      key={agent.id}
+                      onClick={() => handleAgentClick(agent)}
+                      className="w-full flex items-center gap-3 px-2 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-[hsl(262,80%,95%)] dark:hover:bg-[hsl(262,80%,15%)] rounded-lg"
+                    >
+                      <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+                        <Image
+                          src={agent.icon_url.startsWith('http') ? agent.icon_url : `/images/${agent.icon_url}`}
+                          alt={agent.name}
+                          width={32}
+                          height={32}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <span className="truncate">{agent.name}</span>
+                    </button>
+                  ))
+              )}
             </div>
           </div>
 
@@ -379,7 +400,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
             <div className="mt-2 space-y-1">
               {/* Today */}
               {chatHistory?.today?.length > 0 && (
-                <div className="mb-4">
+                <div key="today" className="mb-4">
                   <h4 className="px-2 text-xs text-gray-500 dark:text-gray-400 mb-1">Hari Ini</h4>
                   {chatHistory.today.map(chat => (
                     <ChatItem 
@@ -394,7 +415,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
               {/* Previous 7 days */}
               {chatHistory?.previous_7_days?.length > 0 && (
-                <div className="mb-4">
+                <div key="previous-7-days" className="mb-4">
                   <h4 className="px-2 text-xs text-gray-500 dark:text-gray-400 mb-1">7 Hari Terakhir</h4>
                   {chatHistory.previous_7_days.map(chat => (
                     <ChatItem 
@@ -409,7 +430,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
               {/* Previous 30 days */}
               {chatHistory?.previous_30_days?.length > 0 && (
-                <div>
+                <div key="previous-30-days">
                   <h4 className="px-2 text-xs text-gray-500 dark:text-gray-400 mb-1">30 Hari Terakhir</h4>
                   {chatHistory.previous_30_days.map(chat => (
                     <ChatItem 

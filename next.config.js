@@ -2,6 +2,7 @@ const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development'
 })
 
 /** @type {import('next').NextConfig} */
@@ -19,24 +20,23 @@ const nextConfig = {
   },
   output: 'standalone',
   images: {
+    domains: ['coachbot-n8n-01.fly.dev', 'dummyimage.com'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: 'coachbot-n8n-01.fly.dev',
       },
+      {
+        protocol: 'https',
+        hostname: 'dummyimage.com',
+      }
     ],
   },
   experimental: {
+    // Hanya aktifkan fitur yang benar-benar dibutuhkan
     serverActions: {
       allowedOrigins: ['localhost:3000', 'kamunakuai.fly.dev'],
     },
-  },
-  webpack: (config) => {
-    config.externals.push({
-      'utf-8-validate': 'commonjs utf-8-validate',
-      'bufferutil': 'commonjs bufferutil',
-    });
-    return config;
   },
   // Disable FedCM to resolve Google Sign-In error
   headers: async () => {

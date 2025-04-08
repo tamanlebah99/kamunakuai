@@ -1,4 +1,5 @@
 import { Agent } from '@/types/agent';
+import Image from 'next/image';
 
 interface AgentCardProps {
   agent: Agent;
@@ -8,24 +9,25 @@ interface AgentCardProps {
 export function AgentCard({ agent, onClick }: AgentCardProps) {
   return (
     <div
-      className="flex items-start gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+      className="p-6 rounded-lg border border-gray-200 hover:border-[#4C1D95] transition-colors duration-200 cursor-pointer bg-white"
       onClick={onClick}
     >
-      <img
-        src={agent.icon_url}
-        alt={agent.name}
-        className="w-12 h-12 object-contain bg-white"
-      />
-      <div className="flex-1 min-w-0">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-          {agent.name}
-        </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-          {agent.description}
-        </p>
-        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-          By {agent.provider}
-        </p>
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 rounded-lg overflow-hidden">
+          <Image
+            src={agent.icon_url.startsWith('http') ? agent.icon_url : `/images/${agent.icon_url}`}
+            alt={agent.name}
+            width={48}
+            height={48}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold mb-2 text-gray-900">{agent.name}</h3>
+          <p className="text-sm text-gray-600">
+            {agent.description}
+          </p>
+        </div>
       </div>
     </div>
   );

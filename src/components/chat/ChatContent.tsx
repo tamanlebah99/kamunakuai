@@ -6,7 +6,7 @@ import { Message } from '@/lib/api/chat';
 import { useChat } from '@/contexts/ChatContext';
 import { checkAuth } from '@/lib/auth';
 import { ChatMessage } from '@/components/chat/ChatMessage';
-import { Menu, Plus, Globe, Lightbulb, MoreHorizontal, ArrowUp, User } from 'lucide-react';
+import { Menu, Plus, Globe, Lightbulb, MoreHorizontal, ArrowUp, User, Mic } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -477,7 +477,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
                 type="button"
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
               >
-                <User className="w-6 h-6 text-gray-400" />
+                <User className="w-6 h-6 text-gray-400 dark:text-gray-500" />
               </button>
               
               <input
@@ -485,7 +485,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder="Ketik pesan..."
-                className="flex-1 px-4 py-2 bg-transparent focus:outline-none text-[14px] text-gray-700 dark:text-gray-300"
+                className="flex-1 px-4 py-2 bg-transparent focus:outline-none text-[14px] text-gray-700 dark:text-gray-300 placeholder:text-gray-500 dark:placeholder:text-gray-400"
                 disabled={isLoading}
               />
             </div>
@@ -493,33 +493,38 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
             <div className="flex items-center gap-2 px-2 pb-2">
               <button
                 type="button"
-                className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                disabled
+                className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-not-allowed rounded-full"
               >
-                <Globe size={16} />
+                <Globe size={16} className="text-gray-400 dark:text-gray-500" />
                 <span>Search</span>
               </button>
               
               <button
                 type="button"
-                className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                disabled
+                className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 dark:text-gray-500 cursor-not-allowed rounded-full"
               >
-                <Lightbulb size={16} />
+                <Lightbulb size={16} className="text-gray-400 dark:text-gray-500" />
                 <span>Reason</span>
               </button>
 
+              <div className="flex-1"></div>
+
               <button
                 type="button"
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                disabled
+                className="p-2 text-gray-400 dark:text-gray-500 cursor-not-allowed rounded-full"
               >
-                <MoreHorizontal size={16} className="text-gray-500" />
+                <Mic size={16} className="text-gray-400 dark:text-gray-500" />
               </button>
 
               <button
                 type="submit"
                 disabled={!inputMessage.trim() || isLoading}
-                className="p-2 bg-black hover:bg-gray-900 rounded-full ml-auto"
+                className="p-2 bg-black dark:bg-white hover:bg-gray-900 dark:hover:bg-gray-100 rounded-full"
               >
-                <ArrowUp size={16} className="text-white" />
+                <ArrowUp size={16} className="text-white dark:text-black" />
               </button>
             </div>
           </form>

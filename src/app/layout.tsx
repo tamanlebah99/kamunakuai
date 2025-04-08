@@ -5,8 +5,10 @@ import { ThemeProvider } from '@/components/providers/ThemeProvider';
 import { GoogleAuthProvider } from '@/components/providers/GoogleOAuthProvider';
 import { SidebarProvider } from '@/contexts/SidebarContext';
 import { ChatProvider } from '@/contexts/ChatContext';
-import { ExploreProvider } from '@/contexts/ExploreContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { Toaster } from 'react-hot-toast';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,6 +24,25 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id" suppressHydrationWarning>
+      <head>
+        <meta charSet="utf-8" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+        <meta name="HandheldFriendly" content="true" />
+        <meta name="MobileOptimized" content="width" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="application-name" content="Kamunaku AI" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Kamunaku" />
+        <meta name="description" content="AI Assistant untuk membantu produktivitas Anda" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="theme-color" content="#4C1D95" />
+        
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
+      </head>
       <body className={inter.className}>
         <AuthProvider>
           <ThemeProvider
@@ -33,14 +54,15 @@ export default function RootLayout({
             <GoogleAuthProvider>
               <SidebarProvider>
                 <ChatProvider>
-                  <ExploreProvider>
-                    {children}
-                  </ExploreProvider>
+                  {children}
+                  <Toaster />
                 </ChatProvider>
               </SidebarProvider>
             </GoogleAuthProvider>
           </ThemeProvider>
         </AuthProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

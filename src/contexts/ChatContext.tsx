@@ -147,6 +147,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const loadChatDetail = async (userId: string, chatId: string) => {
     try {
+      const auth = localStorage.getItem('auth');
+      if (!auth) return;
+      
+      const authData = JSON.parse(auth);
+      if (!authData?.token) return;
+
       // Pertama, ambil detail chat untuk mendapatkan webhook_url
       const detailResponse = await fetch(`https://coachbot-n8n-01.fly.dev/webhook/chat/detail`, {
         method: 'POST',
@@ -155,7 +161,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({
           userId,
-          chatId
+          chatId,
+          sessionId: authData.token
         })
       });
       const detailData = await detailResponse.json();
@@ -172,7 +179,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({
           userId,
-          chatId
+          chatId,
+          sessionId: authData.token
         })
       });
       const chatData = await chatResponse.json();
