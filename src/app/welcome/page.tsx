@@ -230,8 +230,13 @@ export default function Home() {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full p-4 relative">
-              <div className="text-center mb-4">
-                <h1 className="text-2xl md:text-4xl font-bold text-gray-900">Apa yang bisa saya bantu?</h1>
+              <div className="text-center mb-8">
+                <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4">Apa yang bisa saya bantu?</h1>
+                <p className="text-[14px] text-gray-600 max-w-2xl mx-auto leading-relaxed">
+                  💡 Kamunaku AI adalah teman ngobrol kamu & aku.<br />
+                  Ketik pesan di chat untuk mengetahui fiture.<br />
+                  👉 <Link href="/login" className="text-[#4C1D95] font-medium hover:underline">Login/Daftar dulu untuk mulai mencoba.</Link>
+                </p>
               </div>
 
               {/* Category Cards */}

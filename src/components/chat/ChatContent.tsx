@@ -9,6 +9,7 @@ import { ChatMessage } from '@/components/chat/ChatMessage';
 import { Menu, Plus, Globe, Lightbulb, MoreHorizontal, ArrowUp, User, Mic } from 'lucide-react';
 import clsx from 'clsx';
 import { v4 as uuidv4 } from 'uuid';
+import Image from 'next/image';
 
 interface ChatContentProps {
   isSidebarOpen: boolean;
@@ -283,8 +284,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
       const response = await fetch(selectedAgent.webhook_url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authData.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           userId: authData.user.id,
@@ -293,7 +293,8 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
           agentId: selectedAgent.id,
           agentName: selectedAgent.name,
           isAction: true,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          sessionId: authData.token
         })
       });
 
@@ -381,10 +382,12 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
               {selectedAgent && (
                 <>
                   {selectedAgent.icon_url ? (
-                    <img
-                      src={selectedAgent.icon_url}
+                    <Image
+                      src={selectedAgent.icon_url.startsWith('http') ? selectedAgent.icon_url : `/images/${selectedAgent.icon_url}`}
                       alt={selectedAgent.name}
-                      className="w-16 h-16 rounded-full mb-4 bg-gray-100"
+                      width={64}
+                      height={64}
+                      className="rounded-full mb-4 bg-gray-100"
                     />
                   ) : (
                     <div className="w-16 h-16 rounded-full mb-4 bg-gray-100 flex items-center justify-center">
@@ -441,7 +444,7 @@ export function ChatContent({ isSidebarOpen, onToggleSidebar }: ChatContentProps
                   key={message.id}
                   className={clsx(
                     'flex items-start mb-6',
-                    message.role === 'human' ? 'justify-end' : 'justify-start'
+                    message.role === 'human' ? 'justify-end' : 'w-full'
                   )}
                 >
                   <ChatMessage message={message} />

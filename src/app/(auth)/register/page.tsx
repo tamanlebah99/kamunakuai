@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,6 +22,13 @@ export default function RegisterPage() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+
+    // Validasi password match
+    if (password !== confirmPassword) {
+      setError('Password dan konfirmasi password tidak sama');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/auth/register', {
@@ -38,30 +46,27 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.message.includes('duplicate key')) {
+        if (data.message?.includes('duplicate key')) {
           throw new Error('Email sudah terdaftar. Silakan gunakan email lain atau login jika sudah memiliki akun.');
         }
         throw new Error(data.message || 'Registrasi gagal');
       }
 
-      if (data.isValid) {
-        // Simpan data auth dengan format yang benar
-        localStorage.setItem('auth', JSON.stringify({
-          token: data.message,
-          user: {
-            id: data.message,
-            name: name
-          }
-        }));
+      // Simpan data auth dengan format yang benar
+      localStorage.setItem('auth', JSON.stringify({
+        token: data.id, // id sebagai token
+        user: {
+          id: data.user_id, // user_id sebagai userid
+          name: data.name,
+          email: data.email
+        }
+      }));
 
-        // Trigger event auth changed
-        window.dispatchEvent(new Event('auth-changed'));
+      // Trigger event auth changed
+      window.dispatchEvent(new Event('auth-changed'));
 
-        // Langsung masuk ke halaman explore
-        router.push('/explore');
-      } else {
-        throw new Error(data.message || 'Registrasi gagal');
-      }
+      // Langsung masuk ke halaman explore
+      router.push('/explore');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registrasi gagal');
     } finally {
@@ -155,6 +160,24 @@ export default function RegisterPage() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#4C1D95] focus:border-[#4C1D95]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                  Konfirmasi Password
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#4C1D95] focus:border-[#4C1D95]"
                   />
                 </div>

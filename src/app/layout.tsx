@@ -13,8 +13,8 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Kamunaku AI - Asisten AI Pribadi Anda',
-  description: 'Asisten AI yang membantu Anda dalam berbagai tugas sehari-hari',
+  title: 'Kamunaku AI - Asisten AI Kamu & Aku',
+  description: 'Asisten AI yang membantu Kamu dalam berbagai tugas sehari-hari',
 };
 
 export default function RootLayout({

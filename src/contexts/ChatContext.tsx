@@ -6,6 +6,7 @@ import type { ChatHistory, ChatItem, ExtendedAgent } from '@/lib/api/explore';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { API_BASE_URL } from '@/config/api';
 import { useSearchParams } from 'next/navigation';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ChatContextType {
   messages: Message[];
@@ -187,13 +188,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       
       if (chatResponse.ok) {
         const transformedMessages = chatData.map((item: any) => ({
-          id: item.id.toString(),
-          role: item.message.type === 'human' ? 'human' : 'ai',
-          content: item.message.content,
+          id: item.id ? item.id.toString() : uuidv4(),
+          role: item.message?.type === 'human' ? 'human' : 'ai',
+          content: item.message?.content || item.output || '',
           createdAt: new Date().toISOString(),
           session_id: item.session_id,
-          additional_kwargs: item.message.additional_kwargs || {},
-          response_metadata: item.message.response_metadata || {}
+          additional_kwargs: item.message?.additional_kwargs || {},
+          response_metadata: item.message?.response_metadata || {}
         }));
         setMessages(transformedMessages);
       } else {

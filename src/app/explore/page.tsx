@@ -52,9 +52,9 @@ function ExploreContent() {
         <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6">
           {/* Header Section - Fixed height, no flex */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Daftar Agent</h1>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Daftar Asisten AI</h1>
             <p className="text-gray-600 dark:text-gray-400 text-base min-h-[48px] px-4 sm:px-8">
-              Temukan dan pilih agent AI yang sesuai dengan kebutuhan Anda.
+              Temukan dan pilih asisten AI yang sesuai dengan kebutuhan Kamu.
             </p>
           </div>
 
@@ -63,7 +63,7 @@ function ExploreContent() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Cari Agent"
+              placeholder="Cari Asisten"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900"
