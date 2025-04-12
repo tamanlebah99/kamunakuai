@@ -129,25 +129,21 @@ export async function renameChat(chatId: string, newTitle: string): Promise<void
 }
 
 export async function deleteChat(userId: string, chatId: string) {
-  try {
-    const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/delete', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId,
-        chatId,
-      }),
-    });
+  const response = await fetch(`${API_BASE_URL}/chat/delete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${getAuthToken()}`,
+    },
+    body: JSON.stringify({
+      userId,
+      chatId,
+    }),
+  });
 
-    if (!response.ok) {
-      throw new Error('Failed to delete chat');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error deleting chat:', error);
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to delete chat');
   }
+
+  return await response.json();
 } 

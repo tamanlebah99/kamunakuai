@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { SearchParamsProvider } from '@/components/common/SearchParamsProvider';
+import { API_BASE_URL } from '@/config/api';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function RegisterPage() {
     }
 
     try {
-      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/auth/register', {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

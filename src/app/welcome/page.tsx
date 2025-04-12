@@ -12,6 +12,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { SearchParamsProvider } from '@/components/common/SearchParamsProvider';
 import Image from 'next/image';
+import { API_BASE_URL } from '@/config/api';
 
 interface Message {
   id: string;
@@ -82,7 +83,7 @@ export default function Home() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/welcome/tabs', {
+        const response = await fetch(`${API_BASE_URL}/welcome/tabs`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -128,7 +129,7 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/welcome', {
+      const response = await fetch(`${API_BASE_URL}/chat/welcome`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -277,7 +278,7 @@ export default function Home() {
 
               {/* Chat Input */}
               <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900">
-                <div className="max-w-3xl mx-auto px-4">
+                <div className="max-w-5xl mx-auto px-4">
                   <form
                     onSubmit={handleSubmit}
                     className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden mb-1 mt-4"

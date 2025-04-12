@@ -5,6 +5,7 @@ import { X, MessageCircle } from 'lucide-react';
 import { Agent, AgentDetail, getAgentDetail } from '@/lib/api/explore';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { API_BASE_URL } from '@/config/api';
 
 interface AgentDetailModalProps {
   agent: Agent;
@@ -51,7 +52,7 @@ export function AgentDetailModal({ agent, onClose, onStartChat }: AgentDetailMod
       }
 
       // Buat chat baru
-      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/chat/newid', {
+      const response = await fetch(`${API_BASE_URL}/chat/newid`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +74,7 @@ export function AgentDetailModal({ agent, onClose, onStartChat }: AgentDetailMod
       const chatId = data.chatId;
 
       // Kirim pesan starter
-      const chatResponse = await fetch(agentDetail?.webhook_url || 'https://coachbot-n8n-01.fly.dev/webhook/chatbot', {
+      const chatResponse = await fetch(agentDetail?.webhook_url || `${API_BASE_URL}/chatbot`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

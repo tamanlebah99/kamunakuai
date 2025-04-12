@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { SearchParamsProvider } from '@/components/common/SearchParamsProvider';
+import { API_BASE_URL } from '@/config/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await fetch('https://coachbot-n8n-01.fly.dev/webhook/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -75,7 +76,7 @@ export default function LoginPage() {
             setIsLoading(true);
             setError('');
             
-            const result = await fetch('https://coachbot-n8n-01.fly.dev/webhook/google-auth', {
+            const result = await fetch(`${API_BASE_URL}/google-auth`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
