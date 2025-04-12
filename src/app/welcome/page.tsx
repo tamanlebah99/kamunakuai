@@ -353,7 +353,9 @@ export default function Home() {
                         kami.
                       </span>
                     ) : (
-                      'Kamunaku AI bisa salah. Periksa info penting.'
+                      <>
+                        Kamunaku AI bisa salah. Periksa info penting. Support kami <a href="https://trakteer.id/kamunaku" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">di sini</a>.
+                      </>
                     )}
                   </p>
                 </div>
