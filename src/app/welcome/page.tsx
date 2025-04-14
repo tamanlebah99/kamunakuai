@@ -30,8 +30,8 @@ interface Category {
 }
 
 const markdownComponents = {
-  p: ({ children }: { children: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
-  strong: ({ children }: { children: React.ReactNode }) => <strong className="font-bold">{children}</strong>,
+  p: ({ children }: { children: React.ReactNode }) => <p className="mb-2 last:mb-0 text-sm">{children}</p>,
+  strong: ({ children }: { children: React.ReactNode }) => <strong className="font-bold text-sm">{children}</strong>,
   em: ({ children }: { children: React.ReactNode }) => <em className="italic">{children}</em>,
   ul: ({ children }: { children: React.ReactNode }) => (
     <ul className="list-disc pl-6 space-y-2 my-4">
@@ -234,7 +234,7 @@ export default function Home() {
               <div className="text-center mb-8">
                 <h1 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4">Apa yang bisa saya bantu?</h1>
                 <p className="text-[14px] text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                  💡 Kamunaku AI adalah teman ngobrol kamu & aku.<br />
+                  💡 Aku adalah sahabat ngobrol kamu.<br />
                   👉 Ketik pesan di chat untuk tanya fiture atau <Link href="/login" className="text-[#4C1D95] font-medium hover:underline">Login/Daftar untuk mulai mencoba.</Link>
                 </p>
               </div>
@@ -278,7 +278,7 @@ export default function Home() {
 
               {/* Chat Input */}
               <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900">
-                <div className="max-w-5xl mx-auto px-4">
+                <div className="max-w-5xl mx-auto px-1">
                   <form
                     onSubmit={handleSubmit}
                     className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden mb-1 mt-4"
@@ -347,7 +347,7 @@ export default function Home() {
                         <Link href="/terms" className="text-[#4C1D95] hover:underline font-bold">
                           Ketentuan Layanan
                         </Link>{' '}
-                        kami dan telah membaca{' '}
+                        & telah membaca{' '}
                         <Link href="/privacy" className="text-[#4C1D95] hover:underline font-bold">
                           Kebijakan Privasi
                         </Link>{' '}
