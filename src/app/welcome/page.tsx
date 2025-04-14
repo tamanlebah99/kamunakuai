@@ -355,7 +355,7 @@ export default function Home() {
                       </span>
                     ) : (
                       <>
-                        Kamunaku AI bisa salah. Periksa info penting. Support kami <a href="https://trakteer.id/kamunaku" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">di sini</a>.
+                        Kamunaku AI bisa salah. Periksa info penting. <a href="https://trakteer.id/kamunaku" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Dukung kami</a>.
                       </>
                     )}
                   </p>
